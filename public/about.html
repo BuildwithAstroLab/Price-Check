@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About PriceCheck | Structured Pricing for Creative Work</title>
+    <meta
+      name="description"
+      content="Learn why PriceCheck makes creative project pricing more structured and explainable."
+    />
+    <meta
+      property="og:title"
+      content="About PriceCheck | Structured Pricing for Creative Work"
+    />
+    <meta
+      property="og:description"
+      content="A clearer approach to project pricing."
+    />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("pricecheck_theme");
+          var theme = saved;
+          if (!theme) {
+            theme = window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+          }
+          if (theme === "light") {
+            document.documentElement.setAttribute("data-theme", "light");
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="public-page" data-auth-state="loading">
+    <header class="public-nav">
+      <a class="nav-logo" href="/">PRICECHECK</a
+      ><button
+        class="menu-toggle"
+        data-menu-toggle
+        aria-expanded="false"
+        aria-controls="public-menu"
+      >
+        Menu
+      </button>
+      <div class="public-theme-toggle-wrap">
+        <button
+          class="theme-toggle-btn"
+          id="theme-toggle-btn"
+          type="button"
+          aria-label="Switch appearance mode"
+          title="Switch appearance mode (Classy Light / Premium Dark)"
+        >
+          <svg
+            class="theme-icon-sun"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="4"></circle>
+            <path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+            ></path>
+          </svg>
+          <svg
+            class="theme-icon-moon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      </div>
+      <nav id="public-menu" data-public-menu aria-label="Primary navigation">
+        <a href="/" data-nav-item="home">Home</a
+        ><a href="/how-it-works" data-nav-item="how-it-works">How it works</a
+        ><a href="/about" data-nav-item="about">About</a
+        ><a class="btn nav-public-cta" data-nav-item="get-started" href="/login"
+          >Get started</a
+        >
+      </nav>
+    </header>
+    <main>
+      <section class="page-hero">
+        <p class="section-eyebrow">About PriceCheck</p>
+        <h1>
+          <span class="gradient-keyword">Pricing</span> should be a decision,
+          not a guess.
+        </h1>
+        <p>
+          PriceCheck was built to make project pricing more structured,
+          explainable, and easier to approach.
+        </p>
+      </section>
+      <section class="public-section narrow">
+        <p class="section-eyebrow">Our purpose</p>
+        <h2>Why <span class="gradient-keyword">PriceCheck</span> exists</h2>
+        <p>
+          Creative professionals often know how to do the work long before they
+          know exactly how to price it. A project can look simple until the
+          deliverables expand, the deadline gets tighter, or the revision cycle
+          grows.
+        </p>
+        <p>
+          PriceCheck exists to bring those variables into the conversation.
+          Instead of starting with a number pulled from memory or intuition
+          alone, you can start by looking at the project itself.
+        </p>
+      </section>
+      <section class="trust-panel">
+        <h2>
+          <span class="gradient-keyword">Understand</span> first.<br />Calculate
+          second.
+        </h2>
+        <p>
+          PriceCheck separates two jobs that are easy to blur together. Gemini
+          helps interpret the brief and extract useful information. Then a
+          deterministic pricing engine applies the project factors to produce
+          the estimate. This separation keeps the system easier to reason about
+          and helps identical inputs stay consistent.
+        </p>
+      </section>
+      <section class="public-section">
+        <p class="section-eyebrow">What we believe</p>
+        <div class="belief-grid">
+          <article>
+            <h3>Clarity over guesswork</h3>
+            <p>A pricing decision should have a reason behind it.</p>
+          </article>
+          <article>
+            <h3>Context matters</h3>
+            <p>
+              Scope, deadline, complexity, experience, client type, and
+              revisions can all affect the work involved.
+            </p>
+          </article>
+          <article>
+            <h3>Transparency builds trust</h3>
+            <p>
+              An estimate should explain where it comes from rather than present
+              an unexplained number.
+            </p>
+          </article>
+          <article>
+            <h3>Estimates are starting points</h3>
+            <p>
+              No pricing model can perfectly predict every client, market, or
+              negotiation.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section class="public-section narrow">
+        <p class="section-eyebrow">Technology</p>
+        <h2>Built with AI, grounded in rules.</h2>
+        <p>
+          PriceCheck uses AI where language understanding is useful and
+          deterministic logic where consistency matters. Gemini helps interpret
+          project descriptions. The pricing engine handles the actual
+          calculation. This combination supports flexible briefs while keeping
+          the final calculation structured and repeatable.
+        </p>
+      </section>
+      <section class="public-section narrow">
+        <p class="section-eyebrow">An evolving product</p>
+        <h2>Built to improve with real-world feedback.</h2>
+        <p>
+          PriceCheck can collect feedback about estimates, including what was
+          ultimately charged and how the client responded. That feedback can
+          help inform future improvements to the pricing model.
+        </p>
+      </section>
+      <section class="final-cta">
+        <h2>
+          Make your next
+          <span class="gradient-keyword">pricing</span> conversation more
+          informed.
+        </h2>
+        <a class="btn btn-primary" data-estimate-cta href="/login"
+          >Create a Price Check</a
+        >
+      </section>
+    </main>
+    <footer class="public-footer">
+      <div>
+        <a class="nav-logo" href="/">PRICECHECK</a>
+        <p>A structured pricing tool for creative work.</p>
+      </div>
+      <div>
+        <strong>Product</strong><a href="/how-it-works">How it works</a>
+        <!-- <a data-estimate-cta href="/login">Create a Price Check</a> -->
+      </div>
+      <div><strong>Company</strong><a href="/about">About</a></div>
+      <small>© 2026 PriceCheck</small>
+    </footer>
+    <script src="/navbar-state.js"></script>
+    <script src="/public-site.js"></script>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "pricecheck",
+  "version": "1.0.0",
+  "description": "PriceCheck helps freelancers and small service providers estimate what they should charge for a project.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "dev:frontend": "vite",
+    "test": "node --test --test-concurrency=1"
+  },
+  "dependencies": {
+    "@google/genai": "^2.22.0",
+    "@supabase/supabase-js": "^2.116.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.22.3",
+    "google-auth-library": "^10.9.1",
+    "nodemon": "^3.1.14",
+    "pdfkit": "^0.20.2",
+    "resend": "^6.31.0",
+    "three": "^0.186.0",
+    "three.js": "^0.77.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "vite": "^8.3.0"
+  }
+}

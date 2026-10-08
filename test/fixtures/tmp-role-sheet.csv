@@ -1,0 +1,2 @@
+id,email,name,skill_work,picture,given_name,family_name,locale,newsletter_consent,role,last_seen_at
+role-user-1,roleuser@example.com,Role User,,https://example.com/avatar.png,Role,User,en-US,false,,2026-10-08T12:14:01.786Z

@@ -1,0 +1,2221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PriceCheck — Know what to charge. Before you quote.</title>
+    <meta
+      name="description"
+      content="Describe your project and get a practical pricing range, recommended quote, and reasoning in seconds."
+    />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("pricecheck_theme");
+          var theme = saved;
+          if (!theme) {
+            theme = window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+          }
+          if (theme === "light") {
+            document.documentElement.setAttribute("data-theme", "light");
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-auth-state="loading">
+    <header class="nav public-nav">
+      <div class="nav-inner">
+        <a class="nav-logo" href="/">PRICECHECK</a>
+        <button
+          class="menu-toggle"
+          id="app-nav-menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="app-nav-links"
+          aria-label="Open navigation menu"
+        >
+          Menu
+        </button>
+        <nav
+          class="nav-links"
+          id="app-nav-links"
+          aria-label="Primary navigation"
+        >
+          <a href="/" data-nav-item="home">Home</a>
+          <a href="/how-it-works" data-nav-item="how-it-works">How it works</a>
+          <a href="/about" data-nav-item="about">About</a>
+          <a
+            class="btn nav-public-cta"
+            href="/login"
+            data-nav-item="get-started"
+            >Get started</a
+          >
+          <a class="nav-product-link" href="/estimate" id="nav-dashboard" hidden
+            >Dashboard</a
+          >
+          <a
+            class="nav-admin-link"
+            href="/admin"
+            id="nav-admin-dashboard"
+            hidden
+            >Admin</a
+          >
+        </nav>
+        <div class="auth-area" aria-live="polite">
+          <div class="auth-user" id="auth-user" hidden>
+            <img id="auth-avatar" alt="" hidden />
+            <span id="auth-name"></span>
+            <button class="auth-signout" id="auth-signout" type="button">
+              Sign out
+            </button>
+          </div>
+          <button
+            class="theme-toggle-btn"
+            id="theme-toggle-btn"
+            type="button"
+            aria-label="Switch appearance mode"
+            title="Switch appearance mode (Classy Light / Premium Dark)"
+          >
+            <svg
+              class="theme-icon-sun"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="4"></circle>
+              <path
+                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+              ></path>
+            </svg>
+            <svg
+              class="theme-icon-moon"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+            </svg>
+          </button>
+          <p class="auth-message" id="auth-message" role="alert" hidden></p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- ============ LANDING VIEW ============ -->
+      <section class="view landing-view" id="landing-view" hidden>
+        <div class="landing-hero">
+          <p class="section-eyebrow">Pricing clarity for independent work</p>
+          <h1>
+            <span class="gradient-keyword">Know what to charge.</span> Before
+            you send the quote.
+          </h1>
+          <p class="landing-lede">
+            PriceCheck analyzes your project requirements, scope, deadline, and
+            experience level to help you build a clearer pricing estimate.
+          </p>
+          <div class="landing-actions">
+            <a class="btn btn-primary landing-cta" href="/login"
+              >Create a Price Check</a
+            >
+            <a class="landing-secondary-link" href="#how-it-works"
+              >See how it works</a
+            >
+          </div>
+        </div>
+        <div class="landing-preview" aria-label="Example PriceCheck result">
+          <div class="landing-preview-topline">
+            <span>PRICECHECK RESULT</span><span>Ready to share</span>
+          </div>
+          <div class="landing-preview-heading">
+            <div>
+              <span class="preview-kicker">Brand identity</span
+              ><strong>Product launch kit</strong>
+            </div>
+            <span class="preview-status">Professional</span>
+          </div>
+          <div class="landing-preview-price">
+            <span>Recommended range</span><strong>₦180,000 — ₦260,000</strong>
+          </div>
+          <div class="landing-preview-bars">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="landing-preview-foot">
+            <span>Scope · deadline · deliverables</span
+            ><span>Suggested quote ₦220,000</span>
+          </div>
+        </div>
+        <div class="landing-signals" aria-label="PriceCheck benefits">
+          <div class="landing-signal">
+            <strong>Scope first</strong
+            ><span>Describe the work in plain language.</span>
+          </div>
+          <div class="landing-signal">
+            <strong>Reasoned pricing</strong>
+            <span>See what moves the recommendation.</span>
+          </div>
+          <div class="landing-signal">
+            <strong>Ready to send</strong
+            ><span>Turn the estimate into an invoice.</span>
+          </div>
+        </div>
+        <section
+          class="landing-how"
+          id="how-it-works"
+          aria-labelledby="landing-how-title"
+        >
+          <p class="section-eyebrow">How it works</p>
+          <h2 id="landing-how-title">
+            A sharper <span class="gradient-keyword">quote</span> in three
+            steps.
+          </h2>
+          <div class="landing-how-grid">
+            <article>
+              <span>01</span>
+              <h3>Describe the request</h3>
+              <p>
+                Give PriceCheck the client’s brief, deliverables, and timing.
+              </p>
+            </article>
+            <article>
+              <span>02</span>
+              <h3>Review the range</h3>
+              <p>
+                See the recommendation, pricing factors, and reasoning behind
+                it.
+              </p>
+            </article>
+            <article>
+              <span>03</span>
+              <h3>Send with confidence</h3>
+              <p>
+                Download the estimate or turn it into a client-ready invoice.
+              </p>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <!-- ============ LOGIN VIEW ============ -->
+      <section class="view login-view" id="login-view" hidden>
+        <div class="login-card">
+          <div class="login-brand" id="login-brand" aria-label="PriceCheck">
+            <!-- <span class="login-brand-mark">P</span> -->
+            <span class="login-brand-text">PriceCheck</span>
+          </div>
+
+          <p class="login-kicker" id="login-kicker">Welcome back</p>
+          <h1 id="login-title">Sign in to continue to PriceCheck</h1>
+          <p class="login-subtitle" id="login-subtitle">
+            Access your workspace and keep your next quote moving.
+          </p>
+
+          <div class="login-google-button" id="login-google-button">
+            <img src="/assets/google-icon.png" alt="" aria-hidden="true" />
+          </div>
+          <div class="login-divider" id="login-divider">
+            <span>or use email instead</span>
+          </div>
+
+          <form class="login-form" id="login-credential-form">
+            <label class="login-name-field" id="login-name-field" hidden>
+              <span>Full name</span>
+              <input
+                id="login-name"
+                name="name"
+                type="text"
+                autocomplete="name"
+                maxlength="100"
+                placeholder="Enter your full name"
+              />
+            </label>
+            <label>
+              <span>Email address</span>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                maxlength="254"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
+            <label class="login-password-field">
+              <span>Password</span>
+              <div class="password-input-wrap">
+                <input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  minlength="8"
+                  maxlength="128"
+                  placeholder="Password"
+                  required
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  data-password-toggle="login-password"
+                  aria-label="Show password"
+                  aria-pressed="false"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Zm11 3.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </label>
+            <section
+              class="password-strength"
+              id="login-password-strength"
+              aria-label="Password strength and requirements"
+              hidden
+            >
+              <div class="password-strength-heading">
+                <span>Password strength</span>
+                <strong id="login-password-strength-label"></strong>
+              </div>
+              <div
+                class="password-strength-track"
+                id="login-password-strength-meter"
+                role="meter"
+                aria-label="Password strength"
+                aria-valuemin="0"
+                aria-valuemax="4"
+                aria-valuenow="0"
+                aria-valuetext="Empty"
+              >
+                <span></span>
+              </div>
+              <ul
+                class="password-strength-rules"
+                aria-label="Password requirements"
+              >
+                <li data-password-rule="length">8+ characters</li>
+                <li data-password-rule="letter">Contains a letter</li>
+                <li data-password-rule="number">Contains a number</li>
+                <li data-password-rule="symbol">Contains a symbol</li>
+              </ul>
+            </section>
+            <label class="login-phone-field" id="login-phone-field" hidden>
+              <span>Phone number</span>
+              <input
+                id="login-phone"
+                name="phone"
+                type="tel"
+                autocomplete="tel"
+                maxlength="30"
+                placeholder="Optional"
+              />
+            </label>
+            <label class="login-skill-field" id="login-skill-field" hidden>
+              <span>What do you do?</span>
+              <select id="login-skill" name="profession">
+                <option value="">Select an option</option>
+                <option>Designer</option>
+                <option>Developer</option>
+                <option>Photographer</option>
+                <option>Videographer</option>
+                <option>Writer</option>
+                <option>Marketer</option>
+                <option>Consultant</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label
+              class="login-experience-field"
+              id="login-experience-field"
+              hidden
+            >
+              <span>Experience level</span>
+              <select id="login-experience" name="experience">
+                <option value="">Select an option</option>
+                <option>Beginner</option>
+                <option>Intermediate</option>
+                <option>Experienced</option>
+                <option>Professional</option>
+              </select>
+            </label>
+            <label
+              class="login-currency-field"
+              id="login-currency-field"
+              hidden
+            >
+              <span>Preferred currency</span>
+              <select id="login-currency" name="currency">
+                <option value="">Select an option</option>
+                <option>USD</option>
+                <option>NGN</option>
+                <option>GBP</option>
+                <option>EUR</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label class="login-checkbox-field" id="login-updates-field" hidden>
+              <input
+                id="login-updates"
+                name="productUpdates"
+                type="checkbox"
+                value="true"
+              />
+              <span>
+                Send me occasional PriceCheck product updates and useful
+                resources.
+              </span>
+            </label>
+            <button
+              class="btn btn-primary login-submit"
+              id="login-submit"
+              type="submit"
+              disabled
+              aria-disabled="true"
+            >
+              Sign In
+            </button>
+            <div
+              class="login-status-box"
+              id="login-status-box"
+              role="status"
+              aria-live="polite"
+            >
+              <strong>
+                <span class="login-status-indicator" aria-hidden="true"></span>
+                Email sign-in is temporarily unavailable.
+              </strong>
+              <span>
+                You can continue with Google while we finish setting up email
+                authentication.
+              </span>
+            </div>
+          </form>
+
+          <div
+            class="login-mode-switch"
+            id="login-account-copy"
+            role="group"
+            aria-label="Authentication mode"
+          >
+            <button type="button" data-auth-mode="signin" aria-pressed="true">
+              Sign in
+            </button>
+            <button type="button" data-auth-mode="signup" aria-pressed="false">
+              Create Account
+            </button>
+          </div>
+          <p
+            class="auth-message login-auth-message"
+            id="login-auth-message"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></p>
+          <form class="login-form login-otp-form" id="login-otp-form" hidden>
+            <p class="login-otp-email" id="login-otp-email">
+              6-digit code sent to <span id="login-otp-email-address"></span>
+            </p>
+            <label>
+              <span>6-digit verification code</span>
+              <input
+                id="login-otp"
+                name="otp"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                pattern="[0-9]{6}"
+                placeholder="6-digit code"
+                aria-describedby="login-otp-status"
+                required
+              />
+            </label>
+            <div class="login-otp-actions">
+              <button
+                class="btn btn-primary login-submit"
+                id="login-otp-submit"
+                type="submit"
+              >
+                Verify email
+              </button>
+            </div>
+            <p
+              class="login-otp-status"
+              id="login-otp-status"
+              aria-live="polite"
+            ></p>
+            <p class="login-otp-resend-copy">
+              Didn't receive it?
+              <button
+                class="login-inline-toggle"
+                id="login-otp-resend"
+                type="button"
+              >
+                Resend code
+              </button>
+            </p>
+            <button
+              class="login-inline-toggle"
+              id="login-otp-back"
+              type="button"
+            >
+              Change email
+            </button>
+          </form>
+          <a class="login-back-link" id="login-back-link" href="/">
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <path d="M16 10H4m0 0 5-5m-5 5 5 5" />
+            </svg>
+            <span>Back to PriceCheck</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- ============ DASHBOARD VIEW ============ -->
+      <section class="view dashboard-view" id="dashboard-view" hidden>
+        <div class="dashboard-header">
+          <div>
+            <p class="section-eyebrow">Your workspace</p>
+            <h1 class="dashboard-title">Good to see you.</h1>
+            <p class="dashboard-subtitle">
+              Keep your pricing decisions clear, consistent, and ready to share.
+            </p>
+          </div>
+          <button
+            class="btn btn-primary dashboard-start-btn"
+            id="dashboard-start-btn"
+            type="button"
+          >
+            Start New Estimate
+          </button>
+        </div>
+
+        <div class="dashboard-stats" aria-label="Estimate summary">
+          <div class="dashboard-stat">
+            <span class="dashboard-stat-label">Saved estimates</span>
+            <strong id="dashboard-estimate-count">0</strong>
+            <span class="dashboard-stat-note">Stored on this device</span>
+          </div>
+          <div class="dashboard-stat">
+            <span class="dashboard-stat-label">Latest recommendation</span>
+            <strong id="dashboard-latest-quote">—</strong>
+            <span class="dashboard-stat-note" id="dashboard-latest-category"
+              >No estimates yet</span
+            >
+          </div>
+          <div class="dashboard-stat">
+            <span class="dashboard-stat-label">Categories explored</span>
+            <strong id="dashboard-category-count">0</strong>
+            <span class="dashboard-stat-note"
+              >Across your estimate history</span
+            >
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <section
+            class="dashboard-panel dashboard-recent"
+            aria-labelledby="dashboard-recent-title"
+          >
+            <div class="dashboard-panel-heading">
+              <div>
+                <p class="section-eyebrow">Activity</p>
+                <h2 class="dashboard-panel-title" id="dashboard-recent-title">
+                  Recent estimates
+                </h2>
+              </div>
+              <button
+                class="history-action"
+                id="dashboard-history-btn"
+                type="button"
+              >
+                View all
+              </button>
+            </div>
+            <p class="dashboard-empty" id="dashboard-empty">
+              Your latest estimates will appear here.
+            </p>
+            <div class="dashboard-recent-list" id="dashboard-recent-list"></div>
+          </section>
+
+          <section
+            class="dashboard-panel dashboard-guide"
+            aria-labelledby="dashboard-guide-title"
+          >
+            <p class="section-eyebrow">A steadier workflow</p>
+            <h2 class="dashboard-panel-title" id="dashboard-guide-title">
+              From scope to invoice.
+            </h2>
+            <p>
+              Start with the project details, review the reasoning, then turn a
+              confident estimate into a client-ready invoice.
+            </p>
+            <button
+              class="btn btn-secondary"
+              id="dashboard-invoice-btn"
+              type="button"
+            >
+              See invoice workflow
+            </button>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============ ADMIN VIEW ============ -->
+      <section class="view admin-view" id="admin-view" hidden>
+        <div class="admin-shell">
+          <!-- <aside class="admin-sidebar" aria-label="Admin navigation">
+            <div class="admin-workspace-mark">
+              <span class="admin-mark-dot"></span>
+              <span>PriceCheck</span>
+            </div>
+            <div class="admin-sidebar-label">Workspace</div>
+            <nav class="admin-sidebar-nav">
+              <a class="is-active" href="#admin-view">Overview</a>
+              <a href="#admin-analytics-section">Analytics</a>
+              <a href="#admin-estimates-section">Estimates</a>
+              <a href="#admin-users-section">Users</a>
+              <a href="#admin-feedback-section">Feedback</a>
+              <a href="#admin-pricing-section">Pricing</a>
+              <a href="#admin-settings-section">Settings</a>
+            </nav>
+            <div class="admin-sidebar-footer">
+              <span class="admin-sidebar-label">System status</span>
+              <span class="admin-status-line"
+                ><i></i> Health checks unavailable</span
+              >
+            </div>
+          </aside> -->
+          <div class="admin-content">
+            <div class="admin-topbar">
+              <div>
+                <p class="admin-breadcrumb">Workspace / Overview</p>
+                <h1 class="dashboard-title" id="admin-greeting-title">
+                  Good day, admin.
+                </h1>
+              </div>
+              <div class="admin-header-actions">
+                <span class="admin-source-badge" id="admin-source-badge"
+                  >Loading data</span
+                >
+                <button
+                  class="admin-notification-button"
+                  id="admin-notification-button"
+                  type="button"
+                  aria-label="Open all feedback notifications"
+                  aria-expanded="false"
+                  aria-controls="admin-feedback-drawer"
+                >
+                  <span aria-hidden="true">&#128276;</span>
+                  <b id="admin-notification-count">0</b>
+                </button>
+                <button
+                  class="history-action history-action-danger"
+                  id="admin-reset-btn"
+                  type="button"
+                >
+                  Reset metrics
+                </button>
+              </div>
+            </div>
+            <div
+              id="admin-access-denied"
+              class="admin-access-denied"
+              hidden
+              style="
+                margin: 0 0 1rem;
+                padding: 1rem 1.25rem;
+                border: 1px solid rgba(255, 149, 0, 0.35);
+                border-radius: 12px;
+                background: rgba(255, 143, 0, 0.08);
+                color: var(--text-primary);
+              "
+            >
+              <p
+                class="section-eyebrow"
+                style="
+                  margin: 0 0 0.35rem;
+                  color: var(--warning-strong, #f59e0b);
+                "
+              >
+                Access restricted
+              </p>
+              <p id="admin-access-denied-message" style="margin: 0">
+                This section requires a higher permission level.
+              </p>
+              <button
+                id="admin-request-access-btn"
+                type="button"
+                class="btn btn-secondary"
+                style="margin-top: 0.75rem"
+              >
+                Request Access
+              </button>
+            </div>
+            <nav
+              class="admin-tab-nav"
+              role="tablist"
+              aria-label="Admin control sections"
+            >
+              <button
+                class="admin-tab-btn is-active"
+                id="tab-btn-overview"
+                role="tab"
+                aria-selected="true"
+                aria-controls="admin-panel-overview"
+                tabindex="0"
+                type="button"
+              >
+                Overview & Analytics
+              </button>
+              <button
+                class="admin-tab-btn"
+                id="tab-btn-pricing"
+                role="tab"
+                aria-selected="false"
+                aria-controls="admin-panel-pricing"
+                tabindex="-1"
+                type="button"
+              >
+                Pricing Studio
+              </button>
+              <button
+                class="admin-tab-btn"
+                id="tab-btn-rbac"
+                role="tab"
+                aria-selected="false"
+                aria-controls="admin-panel-rbac"
+                tabindex="-1"
+                type="button"
+              >
+                Access Control RBAC
+              </button>
+              <button
+                class="admin-tab-btn"
+                id="tab-btn-telemetry"
+                role="tab"
+                aria-selected="false"
+                aria-controls="admin-panel-telemetry"
+                tabindex="-1"
+                type="button"
+              >
+                System Telemetry & Logs
+              </button>
+            </nav>
+
+            <!-- Tab Panel 1: Overview & Analytics -->
+            <div
+              class="admin-tab-panel"
+              id="admin-panel-overview"
+              role="tabpanel"
+              aria-labelledby="tab-btn-overview"
+            >
+              <div class="admin-overview-line">
+                <p class="dashboard-subtitle">
+                  Monitor estimate volume, feedback quality, and calibration
+                  health.
+                </p>
+                <span class="admin-period-label">All time</span>
+              </div>
+              <div
+                class="dashboard-stats"
+                aria-label="Pricing feedback summary"
+              >
+                <div class="dashboard-stat admin-stat-card admin-stat-primary">
+                  <div class="admin-kpi-top">
+                    <span class="dashboard-stat-label"
+                      >Estimates generated</span
+                    >
+                    <span class="admin-kpi-badge">⚡ Volume</span>
+                  </div>
+                  <strong id="admin-estimate-total">—</strong>
+                  <span class="dashboard-stat-note"
+                    >All generated estimates</span
+                  >
+                </div>
+                <div class="dashboard-stat admin-stat-card">
+                  <div class="admin-kpi-top">
+                    <span class="dashboard-stat-label">Registered users</span>
+                    <span class="admin-kpi-badge">👤 Users</span>
+                  </div>
+                  <strong id="admin-user-total">—</strong>
+                  <span class="dashboard-stat-note">Google accounts seen</span>
+                </div>
+                <div class="dashboard-stat admin-stat-card">
+                  <div class="admin-kpi-top">
+                    <span class="dashboard-stat-label">Feedback records</span>
+                    <span class="admin-kpi-badge">📊 Data</span>
+                  </div>
+                  <strong id="admin-feedback-total">—</strong>
+                  <span class="dashboard-stat-note"
+                    >Anonymous outcomes received</span
+                  >
+                </div>
+                <div class="dashboard-stat admin-stat-card">
+                  <div class="admin-kpi-top">
+                    <span class="dashboard-stat-label">Accepted estimates</span>
+                    <span class="admin-kpi-badge badge-success"
+                      >✓ Accepted</span
+                    >
+                  </div>
+                  <strong id="admin-accepted-rate">—</strong>
+                  <span class="dashboard-stat-note"
+                    >Client acceptance rate</span
+                  >
+                </div>
+                <div class="dashboard-stat admin-stat-card">
+                  <div class="admin-kpi-top">
+                    <span class="dashboard-stat-label">Estimate accuracy</span>
+                    <span class="admin-kpi-badge badge-accent"
+                      >🎯 Accuracy</span
+                    >
+                  </div>
+                  <strong id="admin-accuracy">—</strong>
+                  <span class="dashboard-stat-note"
+                    >Suggested vs actual amount</span
+                  >
+                </div>
+              </div>
+              <div class="admin-command-grid">
+                <section
+                  class="dashboard-panel admin-chart-panel"
+                  id="admin-analytics-section"
+                  aria-labelledby="admin-volume-title"
+                >
+                  <div class="admin-panel-heading">
+                    <div>
+                      <p class="section-eyebrow">Calibration signal + volume</p>
+                      <h2 class="dashboard-panel-title" id="admin-volume-title">
+                        Category performance
+                      </h2>
+                    </div>
+                    <span class="admin-chart-legend"
+                      ><i class="legend-volume"></i>Volume
+                      <i class="legend-signal"></i>Accuracy</span
+                    >
+                  </div>
+                  <div class="admin-bar-chart" id="admin-bar-chart"></div>
+                </section>
+                <section
+                  class="dashboard-panel admin-activity-panel"
+                  id="admin-feedback-section"
+                  aria-labelledby="admin-recent-title"
+                >
+                  <div class="admin-panel-heading">
+                    <div>
+                      <p class="section-eyebrow">Latest activity</p>
+                      <h2 class="dashboard-panel-title" id="admin-recent-title">
+                        Recent outcomes
+                      </h2>
+                    </div>
+                    <span class="admin-live-dot">Live</span>
+                  </div>
+                  <div class="admin-recent-list" id="admin-recent-list"></div>
+                </section>
+              </div>
+              <div class="admin-analytics-grid">
+                <section
+                  class="dashboard-panel"
+                  aria-labelledby="admin-outcomes-title"
+                >
+                  <div class="admin-panel-heading">
+                    <div>
+                      <p class="section-eyebrow">Feedback mix</p>
+                      <h2
+                        class="dashboard-panel-title"
+                        id="admin-outcomes-title"
+                      >
+                        Outcome distribution
+                      </h2>
+                    </div>
+                    <span class="admin-live-dot">Live</span>
+                  </div>
+                  <div class="admin-outcome-layout">
+                    <div
+                      class="admin-donut"
+                      id="admin-outcome-donut"
+                      role="img"
+                      aria-label="Feedback outcome distribution"
+                    ></div>
+                    <div
+                      class="admin-outcome-legend"
+                      id="admin-outcome-legend"
+                    ></div>
+                  </div>
+                </section>
+                <section
+                  class="dashboard-panel"
+                  aria-labelledby="admin-variance-title"
+                >
+                  <div class="admin-panel-heading">
+                    <div>
+                      <p class="section-eyebrow">Pricing performance</p>
+                      <h2
+                        class="dashboard-panel-title"
+                        id="admin-variance-title"
+                      >
+                        Estimate vs actual
+                      </h2>
+                    </div>
+                    <span class="admin-live-dot">Live</span>
+                  </div>
+                  <div
+                    class="admin-performance-grid"
+                    id="admin-performance-grid"
+                  ></div>
+                  <div
+                    class="admin-scatter"
+                    id="admin-scatter"
+                    role="img"
+                    aria-label="Estimate versus actual amount plot"
+                  ></div>
+                </section>
+              </div>
+              <section
+                class="dashboard-panel admin-category-panel"
+                aria-labelledby="admin-category-title"
+              >
+                <div class="admin-panel-heading">
+                  <div>
+                    <p class="section-eyebrow">Service intelligence</p>
+                    <h2 class="dashboard-panel-title" id="admin-category-title">
+                      Popular services
+                    </h2>
+                  </div>
+                  <span class="admin-live-dot">Live</span>
+                </div>
+                <div class="admin-table-wrap">
+                  <table class="admin-data-table">
+                    <thead>
+                      <tr>
+                        <th>Category</th>
+                        <th>Feedback</th>
+                        <th>Avg. estimate</th>
+                        <th>Avg. actual</th>
+                        <th>Acceptance</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-category-table"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+
+            <!-- Tab Panel 2: Pricing Studio -->
+            <div
+              class="admin-tab-panel"
+              id="admin-panel-pricing"
+              role="tabpanel"
+              aria-labelledby="tab-btn-pricing"
+              hidden
+            >
+              <section
+                class="dashboard-panel admin-interactive-panel"
+                id="admin-pricing-section"
+              >
+                <div class="admin-panel-heading">
+                  <div>
+                    <p class="section-eyebrow">Pricing Control</p>
+                    <h2 class="dashboard-panel-title">
+                      Dynamic Pricing Configuration
+                    </h2>
+                  </div>
+                  <span class="admin-live-dot">No-Code Editor</span>
+                </div>
+                <p class="admin-panel-subtitle">
+                  Adjust service category baseline prices, minimums, and
+                  maximums live without modifying server code.
+                </p>
+                <div class="admin-pricing-grid" id="admin-pricing-grid">
+                  <div class="admin-pricing-loading">
+                    Loading pricing configuration...
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <!-- Tab Panel 3: Access Control RBAC -->
+            <div
+              class="admin-tab-panel"
+              id="admin-panel-rbac"
+              role="tabpanel"
+              aria-labelledby="tab-btn-rbac"
+              hidden
+            >
+              <section
+                class="dashboard-panel admin-interactive-panel"
+                id="admin-users-section"
+              >
+                <div class="admin-panel-heading">
+                  <div>
+                    <p class="section-eyebrow">Access Control & Governance</p>
+                    <h2 class="dashboard-panel-title">
+                      4-Tier User & Role Management (RBAC)
+                    </h2>
+                  </div>
+                  <span class="admin-live-dot">Backend Enforced</span>
+                </div>
+                <p class="admin-panel-subtitle">
+                  Configure administrative permissions (`Super Admin`, `Pricing
+                  Manager`, `Analyst`, `Standard User`). All privilege changes
+                  require explicit confirmation and audit notes.
+                </p>
+
+                <!-- Search & Role Filter Toolbar -->
+                <div class="rbac-toolbar">
+                  <div class="rbac-search-wrap">
+                    <span aria-hidden="true">&#128269;</span>
+                    <input
+                      type="search"
+                      id="rbac-search-input"
+                      class="rbac-search-input"
+                      placeholder="Search users by name, email, or role..."
+                      aria-label="Search users"
+                    />
+                  </div>
+                  <div class="rbac-role-filters" id="rbac-role-filters">
+                    <button
+                      class="rbac-filter-btn is-active"
+                      data-role-filter="all"
+                      type="button"
+                    >
+                      All Roles
+                    </button>
+                    <button
+                      class="rbac-filter-btn"
+                      data-role-filter="Owner"
+                      type="button"
+                    >
+                      Owner
+                    </button>
+                    <button
+                      class="rbac-filter-btn"
+                      data-role-filter="Super Admin"
+                      type="button"
+                    >
+                      Super Admin
+                    </button>
+                    <button
+                      class="rbac-filter-btn"
+                      data-role-filter="Pricing Manager"
+                      type="button"
+                    >
+                      Pricing Manager
+                    </button>
+                    <button
+                      class="rbac-filter-btn"
+                      data-role-filter="Analyst"
+                      type="button"
+                    >
+                      Analyst
+                    </button>
+                    <button
+                      class="rbac-filter-btn"
+                      data-role-filter="Standard User"
+                      type="button"
+                    >
+                      Standard User
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Role Privileges Grid Summary -->
+                <div class="rbac-roles-grid">
+                  <div class="rbac-role-card role-card-owner">
+                    <div class="rbac-card-top">
+                      <span class="admin-role-badge role-owner">Owner</span>
+                      <strong id="count-owner">1</strong>
+                    </div>
+                    <p class="rbac-card-desc">
+                      Highest-level control: full pricing, access, analytics,
+                      and telemetry privileges.
+                    </p>
+                  </div>
+                  <div class="rbac-role-card role-card-super">
+                    <div class="rbac-card-top">
+                      <span class="admin-role-badge role-super-admin"
+                        >Super Admin</span
+                      >
+                      <strong id="count-super-admin">1</strong>
+                    </div>
+                    <p class="rbac-card-desc">
+                      Full administrative access: pricing, access management,
+                      analytics, and telemetry.
+                    </p>
+                  </div>
+                  <div class="rbac-role-card role-card-pricing">
+                    <div class="rbac-card-top">
+                      <span class="admin-role-badge role-pricing-manager"
+                        >Pricing Manager</span
+                      >
+                      <strong id="count-pricing-manager">1</strong>
+                    </div>
+                    <p class="rbac-card-desc">
+                      Pricing Studio configuration, baseline limits, and
+                      analytics inspection.
+                    </p>
+                  </div>
+                  <div class="rbac-role-card role-card-analyst">
+                    <div class="rbac-card-top">
+                      <span class="admin-role-badge role-analyst">Analyst</span>
+                      <strong id="count-analyst">1</strong>
+                    </div>
+                    <p class="rbac-card-desc">
+                      Read-only access to feedback trends, summary metrics, and
+                      outcomes.
+                    </p>
+                  </div>
+                  <div class="rbac-role-card role-card-standard">
+                    <div class="rbac-card-top">
+                      <span class="admin-role-badge role-standard-user"
+                        >Standard User</span
+                      >
+                      <strong id="count-standard-user">1</strong>
+                    </div>
+                    <p class="rbac-card-desc">
+                      Standard PriceCheck user features (No administrative
+                      privileges).
+                    </p>
+                  </div>
+                </div>
+
+                <div class="admin-table-wrap">
+                  <table class="admin-data-table">
+                    <thead>
+                      <tr>
+                        <th>User Account</th>
+                        <th>Current Role</th>
+                        <th>Status</th>
+                        <th>Assigned Role</th>
+                        <th>Granted Privileges</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-access-table">
+                      <tr>
+                        <td colspan="6">Loading user access roles...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+
+            <!-- Tab Panel 4: System Telemetry & Logs -->
+            <div
+              class="admin-tab-panel"
+              id="admin-panel-telemetry"
+              role="tabpanel"
+              aria-labelledby="tab-btn-telemetry"
+              hidden
+            >
+              <section
+                class="dashboard-panel admin-interactive-panel"
+                id="admin-telemetry-section"
+              >
+                <div class="admin-panel-heading admin-telemetry-heading">
+                  <div>
+                    <p class="section-eyebrow">Real-Time Operations</p>
+                    <h2 class="dashboard-panel-title">
+                      System Telemetry & Live Event Logs
+                    </h2>
+                  </div>
+                  <div class="telemetry-controls-group">
+                    <label
+                      class="telemetry-auto-refresh-label"
+                      for="telemetry-refresh-interval"
+                    >
+                      <span
+                        class="telemetry-pulse-dot"
+                        id="telemetry-pulse-dot"
+                        title="Live Auto-Refresh Active"
+                      ></span>
+                      Auto-Refresh:
+                    </label>
+                    <select
+                      id="telemetry-refresh-interval"
+                      class="telemetry-select"
+                    >
+                      <option value="0">Disabled</option>
+                      <option value="5000" selected>5 seconds</option>
+                      <option value="10000">10 seconds</option>
+                      <option value="30000">30 seconds</option>
+                    </select>
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      id="telemetry-manual-refresh-btn"
+                      type="button"
+                    >
+                      ↻ Refresh
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Telemetry Cards Grid -->
+                <div class="telemetry-cards-grid">
+                  <!-- Card 1: Node.js Process Runtime -->
+                  <div class="telemetry-card">
+                    <div class="telemetry-card-header">
+                      <span class="telemetry-card-title">Process Runtime</span>
+                      <span class="badge badge-node" id="telemetry-node-version"
+                        >Node --</span
+                      >
+                    </div>
+                    <div
+                      class="telemetry-metric-large"
+                      id="telemetry-uptime-value"
+                    >
+                      —
+                    </div>
+                    <div class="telemetry-subtext">Server Process Uptime</div>
+                    <div class="telemetry-card-details">
+                      <div class="telemetry-detail-row">
+                        <span>Environment:</span>
+                        <strong id="telemetry-env">—</strong>
+                      </div>
+                      <div class="telemetry-detail-row">
+                        <span>Platform / Arch:</span>
+                        <strong id="telemetry-platform">—</strong>
+                      </div>
+                      <div class="telemetry-detail-row">
+                        <span>Process ID (PID):</span>
+                        <strong id="telemetry-pid">—</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card 2: Server Memory Utilization -->
+                  <div class="telemetry-card">
+                    <div class="telemetry-card-header">
+                      <span class="telemetry-card-title"
+                        >Memory Heap Usage</span
+                      >
+                      <span
+                        class="badge badge-memory"
+                        id="telemetry-mem-percent-badge"
+                        >0%</span
+                      >
+                    </div>
+                    <div
+                      class="telemetry-metric-large"
+                      id="telemetry-heap-used"
+                    >
+                      — MB
+                    </div>
+                    <div class="telemetry-subtext">
+                      Heap Used / Total (<span id="telemetry-heap-total"
+                        >— MB</span
+                      >)
+                    </div>
+                    <div class="telemetry-progress-wrap">
+                      <div
+                        class="telemetry-progress-bar"
+                        id="telemetry-memory-bar"
+                        style="width: 0%"
+                      ></div>
+                    </div>
+                    <div class="telemetry-card-details">
+                      <div class="telemetry-detail-row">
+                        <span>Resident Set (RSS):</span>
+                        <strong id="telemetry-rss">— MB</strong>
+                      </div>
+                      <div class="telemetry-detail-row">
+                        <span>System Memory Free:</span>
+                        <strong id="telemetry-sys-free">— MB</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card 3: External Services & Integrations -->
+                  <div class="telemetry-card">
+                    <div class="telemetry-card-header">
+                      <span class="telemetry-card-title"
+                        >Core Integration Status</span
+                      >
+                      <span
+                        class="badge badge-success"
+                        id="telemetry-health-status"
+                        >Healthy</span
+                      >
+                    </div>
+                    <div class="telemetry-services-list">
+                      <div class="telemetry-service-item">
+                        <span class="telemetry-service-name"
+                          >Gemini AI Engine</span
+                        >
+                        <span
+                          class="user-status-pill"
+                          id="telemetry-status-gemini"
+                          >Configured</span
+                        >
+                      </div>
+                      <div class="telemetry-service-item">
+                        <span class="telemetry-service-name"
+                          >Supabase Database</span
+                        >
+                        <span
+                          class="user-status-pill"
+                          id="telemetry-status-supabase"
+                          >Connected</span
+                        >
+                      </div>
+                      <div class="telemetry-service-item">
+                        <span class="telemetry-service-name">Google OAuth</span>
+                        <span
+                          class="user-status-pill"
+                          id="telemetry-status-google"
+                          >Configured</span
+                        >
+                      </div>
+                      <div class="telemetry-service-item">
+                        <span class="telemetry-service-name"
+                          >Payment Gateway</span
+                        >
+                        <span
+                          class="user-status-pill"
+                          id="telemetry-status-billing"
+                          >Unconfigured</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card 4: Diagnostics & Heartbeat -->
+                  <div class="telemetry-card">
+                    <div class="telemetry-card-header">
+                      <span class="telemetry-card-title"
+                        >Diagnostics & Cache</span
+                      >
+                      <span class="badge badge-info">HTTP 200 OK</span>
+                    </div>
+                    <div
+                      class="telemetry-metric-large"
+                      id="telemetry-cached-count"
+                    >
+                      0
+                    </div>
+                    <div class="telemetry-subtext">Active Cached Estimates</div>
+                    <div class="telemetry-card-details">
+                      <div class="telemetry-detail-row">
+                        <span>Last Telemetry Sync:</span>
+                        <strong id="telemetry-last-sync">—</strong>
+                      </div>
+                      <div class="telemetry-detail-row">
+                        <span>Server Timezone:</span>
+                        <strong>UTC</strong>
+                      </div>
+                      <div class="telemetry-detail-row">
+                        <span>Security Protection:</span>
+                        <strong class="text-success">RBAC Enforced</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live System Audit & Event Logs Panel -->
+                <div class="telemetry-logs-panel" id="audit-log-panel">
+                  <div class="telemetry-logs-header">
+                    <div class="telemetry-logs-title-wrap">
+                      <h3>Audit & Governance Event Logs</h3>
+                      <span class="telemetry-log-count" id="telemetry-log-count"
+                        >0 Events</span
+                      >
+                    </div>
+                    <div class="telemetry-logs-toolbar">
+                      <div class="rbac-search-wrap">
+                        <input
+                          type="search"
+                          class="rbac-search-input"
+                          id="telemetry-log-search"
+                          placeholder="Search actor, action, description..."
+                          aria-label="Search audit logs"
+                        />
+                      </div>
+                      <div class="audit-select-wrap">
+                        <select
+                          id="audit-action-filter"
+                          class="telemetry-select"
+                          aria-label="Filter by action"
+                        >
+                          <option value="all">All Actions</option>
+                          <option value="pricing.updated">
+                            pricing.updated
+                          </option>
+                          <option value="pricing.reset">pricing.reset</option>
+                          <option value="user.role_changed">
+                            user.role_changed
+                          </option>
+                          <option value="admin.login">admin.login</option>
+                          <option value="system.warning">system.warning</option>
+                          <option value="system.error">system.error</option>
+                        </select>
+                      </div>
+                      <div class="telemetry-log-filters">
+                        <button
+                          class="rbac-filter-btn is-active"
+                          data-log-filter="all"
+                          type="button"
+                        >
+                          All
+                        </button>
+                        <button
+                          class="rbac-filter-btn"
+                          data-log-filter="system"
+                          type="button"
+                        >
+                          System
+                        </button>
+                        <button
+                          class="rbac-filter-btn"
+                          data-log-filter="feedback"
+                          type="button"
+                        >
+                          Feedback
+                        </button>
+                        <button
+                          class="rbac-filter-btn"
+                          data-log-filter="warning"
+                          type="button"
+                        >
+                          Warning
+                        </button>
+                        <button
+                          class="rbac-filter-btn"
+                          data-log-filter="critical"
+                          type="button"
+                        >
+                          Critical
+                        </button>
+                      </div>
+                      <button
+                        class="btn btn-secondary btn-sm"
+                        id="telemetry-clear-logs-btn"
+                        type="button"
+                      >
+                        Clear Logs
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    class="telemetry-log-terminal"
+                    id="telemetry-log-terminal"
+                  >
+                    <div class="telemetry-log-empty" id="telemetry-log-empty">
+                      No activity recorded yet.
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+        <div
+          class="admin-drawer-backdrop"
+          id="admin-drawer-backdrop"
+          hidden
+        ></div>
+        <!-- Pricing Confirmation Diff Modal -->
+        <div
+          class="admin-modal-backdrop"
+          id="pricing-confirm-backdrop"
+          hidden
+        ></div>
+        <dialog
+          class="admin-confirm-modal"
+          id="pricing-confirm-modal"
+          aria-labelledby="pricing-confirm-title"
+          hidden
+        >
+          <div class="admin-modal-header">
+            <h3 id="pricing-confirm-title">Confirm Pricing Change</h3>
+            <button
+              class="admin-modal-close"
+              id="pricing-confirm-close"
+              type="button"
+              aria-label="Close dialog"
+            >
+              &times;
+            </button>
+          </div>
+          <div class="admin-modal-body">
+            <p class="admin-modal-kicker">
+              Verify pricing modifications for
+              <strong id="pricing-confirm-category">—</strong> before applying
+              to live engine:
+            </p>
+
+            <div class="pricing-diff-box">
+              <div class="diff-column diff-prev">
+                <span class="diff-label">Previous Config</span>
+                <div class="diff-value">
+                  Base: <strong id="pricing-diff-prev-base">₦0</strong>
+                </div>
+                <div class="diff-value">
+                  Range: <span id="pricing-diff-prev-range">₦0 – ₦0</span>
+                </div>
+              </div>
+              <div class="diff-arrow">→</div>
+              <div class="diff-column diff-next">
+                <span class="diff-label">New Config</span>
+                <div class="diff-value">
+                  Base: <strong id="pricing-diff-next-base">₦0</strong>
+                </div>
+                <div class="diff-value">
+                  Range: <span id="pricing-diff-next-range">₦0 – ₦0</span>
+                </div>
+              </div>
+            </div>
+
+            <label class="admin-reason-label">
+              <span>Change Reason / Audit Note (Optional)</span>
+              <input
+                type="text"
+                id="pricing-confirm-reason"
+                placeholder="e.g. Market adjustment for creative services"
+                maxlength="200"
+              />
+            </label>
+          </div>
+          <div class="admin-modal-footer">
+            <button
+              class="btn btn-secondary"
+              id="pricing-confirm-cancel"
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              class="btn btn-primary"
+              id="pricing-confirm-submit"
+              type="button"
+            >
+              Confirm & Apply Change
+            </button>
+          </div>
+        </dialog>
+
+        <!-- RBAC Role Change Confirmation Modal -->
+        <div
+          class="admin-modal-backdrop"
+          id="rbac-confirm-backdrop"
+          hidden
+        ></div>
+        <dialog
+          class="admin-confirm-modal"
+          id="rbac-confirm-modal"
+          aria-labelledby="rbac-confirm-title"
+          hidden
+        >
+          <div class="admin-modal-header">
+            <h3 id="rbac-confirm-title">Confirm Role Privilege Update</h3>
+            <button
+              class="admin-modal-close"
+              id="rbac-confirm-close"
+              type="button"
+              aria-label="Close dialog"
+            >
+              &times;
+            </button>
+          </div>
+          <div class="admin-modal-body">
+            <p class="admin-modal-kicker">
+              Are you sure you want to change administrative access for
+              <strong id="rbac-modal-user-name">—</strong>?
+            </p>
+
+            <div class="pricing-diff-box">
+              <div class="diff-column diff-prev">
+                <span class="diff-label">Current Role</span>
+                <div class="diff-value">
+                  <span id="rbac-modal-old-badge" class="admin-role-badge"
+                    >—</span
+                  >
+                </div>
+              </div>
+              <div class="diff-arrow">→</div>
+              <div class="diff-column diff-next">
+                <span class="diff-label">Target Role</span>
+                <div class="diff-value">
+                  <span id="rbac-modal-new-badge" class="admin-role-badge"
+                    >—</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="rbac-permission-preview"
+              id="rbac-modal-permission-desc"
+            >
+              Privileges: Pricing control, RBAC access, analytics, and
+              telemetry.
+            </div>
+
+            <label class="admin-reason-label">
+              <span>Reason / Security Audit Note (Optional)</span>
+              <input
+                type="text"
+                id="rbac-confirm-reason"
+                placeholder="e.g. Assigned to new lead pricing analyst"
+                maxlength="200"
+              />
+            </label>
+          </div>
+          <div class="admin-modal-footer">
+            <button
+              class="btn btn-secondary"
+              id="rbac-confirm-cancel"
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              class="btn btn-primary"
+              id="rbac-confirm-submit"
+              type="button"
+            >
+              Confirm & Grant Role
+            </button>
+          </div>
+        </dialog>
+        <aside
+          class="admin-feedback-drawer"
+          id="admin-feedback-drawer"
+          aria-labelledby="admin-feedback-drawer-title"
+          aria-hidden="true"
+        >
+          <div class="admin-drawer-header">
+            <div>
+              <p class="section-eyebrow">Feedback inbox</p>
+              <h2 id="admin-feedback-drawer-title">Notifications</h2>
+            </div>
+            <div class="admin-drawer-actions">
+              <button
+                class="admin-drawer-clear"
+                id="admin-drawer-clear"
+                type="button"
+                aria-label="Clear notification history"
+                title="Clear notification history"
+              >
+                &#128465;
+              </button>
+              <button
+                class="admin-drawer-close"
+                id="admin-drawer-close"
+                type="button"
+                aria-label="Close feedback panel"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+          <p class="admin-drawer-summary" id="admin-drawer-summary">
+            Loading notifications...
+          </p>
+          <div class="admin-drawer-counts">
+            <span id="admin-drawer-notification-count">0 notifications</span
+            ><span id="admin-drawer-feedback-count">0 feedback records</span>
+          </div>
+          <div
+            class="admin-notification-filters"
+            role="group"
+            aria-label="Filter notifications"
+          >
+            <button
+              class="is-active"
+              type="button"
+              data-notification-filter="all"
+            >
+              All
+            </button>
+            <button type="button" data-notification-filter="feedback">
+              Feedback
+            </button>
+            <button type="button" data-notification-filter="frontend">
+              Frontend
+            </button>
+            <button type="button" data-notification-filter="backend">
+              Backend
+            </button>
+            <button type="button" data-notification-filter="database">
+              Database
+            </button>
+            <button type="button" data-notification-filter="gemini">
+              Gemini
+            </button>
+          </div>
+          <div class="admin-feedback-list" id="admin-feedback-list"></div>
+        </aside>
+        <p class="admin-message" id="admin-message" role="alert" hidden></p>
+      </section>
+
+      <!-- ============ HERO / INPUT VIEW ============ -->
+      <section class="view view-input" id="view-input">
+        <div class="input-layout">
+          <div class="hero-inner">
+            <h1 class="hero-title">
+              Know what to charge.<br />Before you quote.
+            </h1>
+            <p class="hero-sub">
+              Describe your project and get a practical pricing range,
+              recommended quote, and reasoning in seconds.
+            </p>
+
+            <form id="pricecheck-form" class="quote-form" novalidate>
+              <label for="description" class="sr-only"
+                >What are you charging for?</label
+              >
+              <div class="textarea-wrap">
+                <span class="textarea-label">Client request</span>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows="5"
+                  maxlength="2000"
+                  placeholder="Describe what the client wants, the scope, and what you need to deliver."
+                ></textarea>
+              </div>
+
+              <div class="deliverables-field">
+                <label for="deliverables"
+                  >Deliverables <span>(optional)</span></label
+                >
+                <input
+                  id="deliverables"
+                  name="deliverables"
+                  type="text"
+                  maxlength="1200"
+                  placeholder="e.g. 150 edited photos, online gallery, 2 revisions"
+                />
+                <p class="field-help">
+                  Separate multiple deliverables with commas.
+                </p>
+              </div>
+
+              <div class="currency-field">
+                <label for="currency">Quote currency</label>
+                <select id="currency" name="currency">
+                  <option value="NGN" selected>Nigerian naira (NGN ₦)</option>
+                  <option value="USD">US dollar (USD $)</option>
+                  <option value="EUR">Euro (EUR €)</option>
+                  <option value="GBP">British pound (GBP £)</option>
+                  <option value="GHS">Ghanaian cedi (GHS GH₵)</option>
+                  <option value="KES">Kenyan shilling (KES KSh)</option>
+                  <option value="ZAR">South African rand (ZAR R)</option>
+                  <option value="CAD">Canadian dollar (CAD CA$)</option>
+                  <option value="AUD">Australian dollar (AUD A$)</option>
+                </select>
+              </div>
+
+              <fieldset class="selection-group">
+                <legend>Experience level</legend>
+                <div
+                  class="selection-grid"
+                  role="radiogroup"
+                  aria-label="Experience level"
+                >
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="false"
+                    data-selection="experienceLevel"
+                    data-value="starting_out"
+                  >
+                    <strong>Starting out</strong
+                    ><span>Building your portfolio</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="false"
+                    data-selection="experienceLevel"
+                    data-value="intermediate"
+                  >
+                    <strong>Intermediate</strong><span>Confident delivery</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="true"
+                    data-selection="experienceLevel"
+                    data-value="professional"
+                  >
+                    <strong>Professional</strong
+                    ><span>Polished client-ready work</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="false"
+                    data-selection="experienceLevel"
+                    data-value="expert"
+                  >
+                    <strong>Expert</strong
+                    ><span>High-end strategic execution</span>
+                  </button>
+                </div>
+              </fieldset>
+
+              <fieldset class="selection-group">
+                <legend>Deadline</legend>
+                <div
+                  class="selection-grid selection-grid-deadline"
+                  role="radiogroup"
+                  aria-label="Deadline"
+                >
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="false"
+                    data-selection="deadline"
+                    data-value="flexible"
+                  >
+                    <strong>Flexible</strong><span>Room to plan well</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="false"
+                    data-selection="deadline"
+                    data-value="7_plus_days"
+                  >
+                    <strong>7+ days</strong><span>Comfortable runway</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="true"
+                    data-selection="deadline"
+                    data-value="3_6_days"
+                  >
+                    <strong>3–6 days</strong><span>Standard turnaround</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="false"
+                    data-selection="deadline"
+                    data-value="1_2_days"
+                  >
+                    <strong>1–2 days</strong><span>Compressed schedule</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="selection-card"
+                    role="radio"
+                    aria-checked="false"
+                    data-selection="deadline"
+                    data-value="same_day_rush"
+                  >
+                    <strong>Same day / Rush</strong
+                    ><span>Priority delivery</span>
+                  </button>
+                </div>
+              </fieldset>
+
+              <p class="field-error" id="field-error" role="alert" hidden></p>
+
+              <button
+                type="submit"
+                class="btn btn-primary btn-large"
+                id="submit-btn"
+              >
+                <span class="btn-label">Check My Price</span>
+              </button>
+            </form>
+
+            <p class="hero-note">
+              Private by default. Built for freelancers, creators, and
+              independent professionals.
+            </p>
+          </div>
+
+          <aside
+            class="history-panel"
+            id="history-panel"
+            aria-labelledby="history-title"
+          >
+            <div class="history-heading">
+              <div>
+                <p class="section-eyebrow">Saved locally</p>
+                <h2 class="history-title" id="history-title">
+                  Recent estimates
+                </h2>
+              </div>
+              <button
+                class="history-clear"
+                id="history-clear-btn"
+                type="button"
+                hidden
+              >
+                Clear all
+              </button>
+            </div>
+            <p class="history-empty" id="history-empty">
+              Your completed estimates will appear here.
+            </p>
+            <div class="history-list" id="history-list"></div>
+          </aside>
+        </div>
+
+        <div class="feature-grid" id="how-it-works">
+          <div class="feature-card">
+            <span class="feature-index">01</span>
+            <h3>Understand the scope</h3>
+            <p>
+              PriceCheck reads your project description and pulls out what
+              actually drives cost — deliverables, time, complexity, and client
+              type.
+            </p>
+          </div>
+          <div class="feature-card">
+            <span class="feature-index">02</span>
+            <h3>Estimate the value</h3>
+            <p>
+              A pricing engine calculates a realistic range for the work, built
+              on category baselines you can trust and adjust over time.
+            </p>
+          </div>
+          <div class="feature-card">
+            <span class="feature-index">03</span>
+            <h3>Quote with confidence</h3>
+            <p>
+              Walk into the conversation with a number, a range, and the
+              reasoning behind it — no more guessing what to charge.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ LOADING VIEW ============ -->
+      <section class="view view-loading" id="view-loading" hidden>
+        <div class="loading-inner">
+          <div class="loading-progress-meta">
+            <p class="loading-text" id="loading-text">Starting</p>
+            <strong class="loading-percent" id="loading-percent">5%</strong>
+          </div>
+          <div
+            class="loading-progress-track"
+            role="progressbar"
+            aria-label="Estimate progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="5"
+            id="loading-progress-track"
+          >
+            <div class="loading-progress-fill" id="loading-progress-fill"></div>
+          </div>
+          <p class="loading-sub">
+            We are reading scope, calculating a fair range, and preparing your
+            result.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ ERROR VIEW ============ -->
+      <section class="view view-error" id="view-error" hidden>
+        <div class="error-inner">
+          <p class="section-eyebrow">We hit a pause</p>
+          <h1 class="error-title">We couldn’t finish that estimate.</h1>
+          <p class="error-message" id="error-message">
+            Something went wrong while analyzing your project. Please try again.
+          </p>
+          <div class="error-actions">
+            <button class="btn btn-primary" id="error-retry-btn">
+              Try Again
+            </button>
+            <button class="btn btn-secondary" id="error-return-btn">
+              Return to estimate
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ RESULT VIEW ============ -->
+      <section class="view view-result" id="view-result" hidden>
+        <div class="result-inner">
+          <p class="result-eyebrow">Your Estimate</p>
+          <div class="result-heading-meta">
+            <div>
+              <span>PROJECT</span><strong id="result-project-name">—</strong>
+            </div>
+            <div>
+              <span>EXPERIENCE</span><strong id="result-experience">—</strong>
+            </div>
+            <div>
+              <span>DEADLINE</span><strong id="result-deadline">—</strong>
+            </div>
+          </div>
+
+          <div class="quote-summary">
+            <div class="quote-primary">
+              <span class="quote-label">Recommended Quote</span>
+              <span class="quote-value" id="recommended-quote">₦0</span>
+            </div>
+            <div class="quote-range">
+              <span class="quote-label">Fair Range</span>
+              <span class="quote-range-value" id="fair-range">₦0 – ₦0</span>
+            </div>
+          </div>
+
+          <div class="range-indicator" id="range-indicator">
+            <div class="range-track">
+              <div class="range-fill" id="range-fill"></div>
+              <div class="range-marker" id="range-marker"></div>
+            </div>
+            <div class="range-labels">
+              <span id="range-min-label">₦0</span>
+              <span id="range-max-label">₦0</span>
+            </div>
+          </div>
+
+          <div class="result-grid">
+            <div class="card breakdown-card">
+              <h2 class="card-title">Scope &amp; project details</h2>
+              <dl class="breakdown-list" id="breakdown-list">
+                <!-- populated by app.js -->
+              </dl>
+            </div>
+
+            <div class="card reasons-card">
+              <h2 class="card-title">Why This Price?</h2>
+              <ul class="reasons-list" id="reasons-list">
+                <!-- populated by app.js -->
+              </ul>
+            </div>
+
+            <div class="card advice-card" id="advice-card">
+              <h2 class="card-title">Pricing Advice</h2>
+              <p class="advice-text" id="advice-text"></p>
+              <p class="negotiation-tip" id="negotiation-tip"></p>
+            </div>
+
+            <div class="card missing-card" id="missing-card" hidden>
+              <h2 class="card-title">Worth Confirming</h2>
+              <ul class="missing-list" id="missing-list"></ul>
+            </div>
+          </div>
+
+          <p class="disclaimer">
+            Estimates are provided for planning purposes. Your final price
+            should reflect your experience, demand, portfolio, client value,
+            costs, and market.
+          </p>
+
+          <div class="result-actions">
+            <button class="btn btn-secondary" id="copy-btn">Copy Quote</button>
+            <button class="btn btn-secondary" id="download-btn">
+              Download Estimate
+            </button>
+            <button class="btn btn-secondary" id="invoice-btn">
+              Create Invoice
+            </button>
+            <button class="btn btn-primary new-check-action" id="new-check-btn">
+              Start New Estimate
+            </button>
+          </div>
+
+          <form class="feedback-form card" id="feedback-form">
+            <div class="invoice-form-heading">
+              <div>
+                <p class="section-eyebrow">Help improve estimates</p>
+                <h2 class="card-title">How did this quote land?</h2>
+              </div>
+              <span class="feedback-optional">Optional</span>
+            </div>
+            <p class="invoice-form-intro">
+              Share what happened after you used the estimate. We do not save
+              your project description or client details.
+            </p>
+            <div class="invoice-fields">
+              <label
+                >What did you charge?<input
+                  id="feedback-amount"
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+              /></label>
+              <label
+                >What happened?
+                <select id="feedback-outcome" required>
+                  <option value="accepted">Client accepted</option>
+                  <option value="negotiating">Still negotiating</option>
+                  <option value="declined">Client declined</option>
+                  <option value="not_sent">I have not sent it yet</option>
+                </select>
+              </label>
+              <label class="invoice-field-wide"
+                >If you changed the estimate, why?
+                <select id="feedback-reason" required>
+                  <option value="none">I used the suggested amount</option>
+                  <option value="scope_changed">
+                    The project scope changed
+                  </option>
+                  <option value="client_budget">
+                    The client budget was different
+                  </option>
+                  <option value="market_rate">
+                    The market rate was different
+                  </option>
+                  <option value="personal_choice">
+                    I chose a different amount
+                  </option>
+                </select>
+              </label>
+            </div>
+            <p
+              class="feedback-message"
+              id="feedback-message"
+              role="status"
+              hidden
+            ></p>
+            <button class="btn btn-secondary" type="submit">
+              Send Feedback
+            </button>
+          </form>
+
+          <form class="invoice-form card" id="invoice-form" hidden>
+            <div class="invoice-form-heading">
+              <div>
+                <p class="section-eyebrow">Next step</p>
+                <h2 class="card-title">Create an invoice</h2>
+              </div>
+              <button
+                class="history-action"
+                id="invoice-close-btn"
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+            <p class="invoice-form-intro">
+              Your estimate details are already filled in. Add the client
+              information and download a ready-to-send PDF.
+            </p>
+            <div class="invoice-fields">
+              <label
+                >From<input
+                  id="invoice-from"
+                  maxlength="120"
+                  placeholder="Your name or business"
+              /></label>
+              <label
+                >Bill to<input
+                  id="invoice-client"
+                  maxlength="120"
+                  placeholder="Client name"
+                  required
+              /></label>
+              <label
+                >Client email <span>(optional)</span
+                ><input
+                  id="invoice-email"
+                  type="email"
+                  maxlength="160"
+                  placeholder="client@example.com"
+              /></label>
+              <label
+                >Due date <span>(optional)</span
+                ><input id="invoice-due" type="date"
+              /></label>
+              <label
+                >Bank name <span>(required)</span
+                ><input
+                  id="invoice-bank"
+                  maxlength="120"
+                  placeholder="Your bank name"
+                  required
+              /></label>
+              <label
+                >Account name <span>(required)</span
+                ><input
+                  id="invoice-account-name"
+                  maxlength="120"
+                  placeholder="Name on the account"
+                  required
+              /></label>
+              <label
+                >Account number <span>(required)</span
+                ><input
+                  id="invoice-account-number"
+                  maxlength="80"
+                  inputmode="numeric"
+                  placeholder="Account number"
+                  required
+              /></label>
+              <label class="invoice-field-wide"
+                >Notes <span>(optional)</span
+                ><textarea
+                  id="invoice-notes"
+                  rows="3"
+                  maxlength="320"
+                  placeholder="Payment terms, bank details, or a thank-you note"
+                ></textarea>
+              </label>
+            </div>
+            <button
+              class="btn btn-primary btn-large"
+              id="invoice-download-btn"
+              type="submit"
+            >
+              Download Invoice PDF
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="about">
+      <p>
+        PriceCheck gives planning estimates for freelancers and small service
+        providers. It is not a guarantee of market rate.
+      </p>
+    </footer>
+
+    <!-- Toast Notification System -->
+    <div
+      class="toast-container"
+      id="toast-container"
+      role="region"
+      aria-label="Notifications"
+      aria-live="polite"
+    ></div>
+
+    <script src="navbar-state.js"></script>
+    <script src="historyUtils.js"></script>
+    <script src="app.js"></script>
+    <script src="motion.js"></script>
+  </body>
+</html>

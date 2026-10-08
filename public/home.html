@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PriceCheck | Know What to Charge</title>
+    <meta
+      name="description"
+      content="Turn project requirements into a structured pricing estimate before you send the quote."
+    />
+    <meta property="og:title" content="PriceCheck | Know What to Charge" />
+    <meta
+      property="og:description"
+      content="Structured pricing estimates for creative work."
+    />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("pricecheck_theme");
+          var theme = saved;
+          if (!theme) {
+            theme = window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+          }
+          if (theme === "light") {
+            document.documentElement.setAttribute("data-theme", "light");
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="public-page" data-auth-state="loading">
+    <header class="public-nav">
+      <a class="nav-logo" href="/">PRICECHECK</a
+      ><button
+        class="menu-toggle"
+        data-menu-toggle
+        aria-expanded="false"
+        aria-controls="public-menu"
+      >
+        Menu
+      </button>
+      <div class="public-theme-toggle-wrap">
+        <button
+          class="theme-toggle-btn"
+          id="theme-toggle-btn"
+          type="button"
+          aria-label="Switch appearance mode"
+          title="Switch appearance mode (Classy Light / Premium Dark)"
+        >
+          <svg
+            class="theme-icon-sun"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="4"></circle>
+            <path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+            ></path>
+          </svg>
+          <svg
+            class="theme-icon-moon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      </div>
+      <nav id="public-menu" data-public-menu aria-label="Primary navigation">
+        <a href="/" data-nav-item="home">Home</a
+        ><a href="/how-it-works" data-nav-item="how-it-works">How it works</a
+        ><a href="/about" data-nav-item="about">About</a
+        ><a class="btn nav-public-cta" data-nav-item="get-started" href="/login"
+          >Get started</a
+        >
+      </nav>
+    </header>
+    <main>
+      <section class="public-hero">
+        <div>
+          <p class="section-eyebrow">
+            A clearer starting point for creative work
+          </p>
+          <h1>
+            <span class="public-hero-title-line"
+              >Know <span class="gradient-keyword">what to charge.</span></span
+            ><br />Before you send the quote.
+          </h1>
+          <p class="public-lede">
+            PriceCheck turns project requirements into a structured pricing
+            estimate, so you can approach your next quote with more clarity.
+          </p>
+          <div class="public-actions">
+            <a class="btn btn-primary" data-estimate-cta href="/login"
+              >Create a Price Check</a
+            ><a class="text-link" href="/how-it-works">See how it works</a>
+          </div>
+        </div>
+        <aside class="product-preview" aria-label="Example PriceCheck estimate">
+          <span class="preview-label">PRICECHECK RESULT</span>
+          <h2>Brand Identity Design</h2>
+          <div class="preview-row">
+            <span>Recommended range</span><strong>₦120,000 – ₦180,000</strong>
+          </div>
+          <div class="preview-row emphasis">
+            <span>Suggested quote</span><strong>₦150,000</strong>
+          </div>
+          <div class="preview-tags">
+            <span>Professional</span><span>Deadline: 12 days</span>
+          </div>
+        </aside>
+      </section>
+      <section class="public-section narrow">
+        <p class="section-eyebrow">The problem</p>
+        <h2>Pricing creative work shouldn’t feel like guesswork.</h2>
+        <p>
+          Creative projects rarely arrive with a perfectly defined price. Scope
+          changes, deliverables pile up, deadlines move closer, and revisions
+          appear. PriceCheck helps turn those moving parts into a structured
+          estimate you can reason about before you send the quote.
+        </p>
+      </section>
+      <section class="public-section">
+        <p class="section-eyebrow">The pricing model</p>
+        <h2>A price is shaped by more than the deliverable.</h2>
+        <p class="section-intro">
+          PriceCheck’s model considers these project factors. They provide
+          structure for an estimate; they do not guarantee a market price.
+        </p>
+        <div class="factor-grid">
+          <article>
+            <h3>Scope</h3>
+            <p>What exactly needs to be delivered?</p>
+          </article>
+          <article>
+            <h3>Complexity</h3>
+            <p>How involved is the work?</p>
+          </article>
+          <article>
+            <h3>Deadline</h3>
+            <p>How much time is available?</p>
+          </article>
+          <article>
+            <h3>Experience</h3>
+            <p>What level of execution are you offering?</p>
+          </article>
+          <article>
+            <h3>Client</h3>
+            <p>Who are you delivering the work for?</p>
+          </article>
+          <article>
+            <h3>Deliverables & revisions</h3>
+            <p>How much work and iteration is included?</p>
+          </article>
+        </div>
+      </section>
+      <section class="public-section">
+        <p class="section-eyebrow">How it works</p>
+        <h2>From brief to pricing clarity.</h2>
+        <div class="step-grid">
+          <article>
+            <span>01</span>
+            <h3>Describe the project</h3>
+            <p>
+              Share the brief, deliverables, deadline, and relevant details.
+            </p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>PriceCheck analyzes the scope</h3>
+            <p>
+              Gemini helps interpret the brief and identify pricing factors.
+            </p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Get a structured estimate</h3>
+            <p>Review the range, explanation, and negotiation guidance.</p>
+          </article>
+        </div>
+        <a class="text-link" href="/how-it-works">See the full process →</a>
+      </section>
+      <section class="trust-panel">
+        <h2>
+          AI helps understand the brief.<br />The pricing model calculates the
+          number.
+        </h2>
+        <p>
+          Gemini helps understand project requirements, but it does not directly
+          decide the final price. A deterministic pricing engine applies the
+          project factors consistently.
+        </p>
+      </section>
+      <section class="public-section result-section">
+        <div>
+          <p class="section-eyebrow">More than a number</p>
+          <h2>See the reasoning behind the recommendation.</h2>
+          <p>
+            Your result brings together a recommended range, suggested quote,
+            project scope, pricing factors, missing information, and negotiation
+            guidance.
+          </p>
+          <a class="btn btn-secondary" data-estimate-cta href="/login"
+            >Try PriceCheck</a
+          >
+        </div>
+        <div class="result-list">
+          <span>Recommended price range</span><span>Suggested quote</span
+          ><span>Project scope and factors</span><span>Missing information</span
+          ><span>Negotiation guidance</span>
+        </div>
+      </section>
+      <section class="public-section narrow">
+        <p class="section-eyebrow">Built for creative professionals</p>
+        <h2>Built for people who sell creative work.</h2>
+        <p>
+          Whether you are designing a brand, editing a video, shooting an event,
+          creating graphics, or delivering another creative service, PriceCheck
+          gives you a structured starting point for the conversation about
+          price.
+        </p>
+      </section>
+      <section class="final-cta">
+        <h2>Your next quote starts with clarity.</h2>
+        <p>
+          Describe the project. Understand the scope. Build a more informed
+          estimate.
+        </p>
+        <!-- <a class="btn btn-primary" data-estimate-cta href="/login"
+          >Create a Price Check</a
+        > -->
+      </section>
+    </main>
+    <footer class="public-footer">
+      <div>
+        <a class="nav-logo" href="/">PRICECHECK</a>
+        <p>A structured pricing tool for creative work.</p>
+      </div>
+      <div>
+        <strong>Product</strong><a href="/how-it-works">How it works</a>
+      </div>
+      <div><strong>Company</strong><a href="/about">About</a></div>
+      <small>© 2026 PriceCheck</small>
+    </footer>
+    <script src="/navbar-state.js"></script>
+    <script src="/public-site.js"></script>
+  </body>
+</html>
