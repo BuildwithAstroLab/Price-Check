@@ -1,9 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/:path*",
-      "destination": "https://price-check-nlsi.onrender.com/:path*"
+      "src": "^/$",
+      "dest": "https://price-check-nlsi.onrender.com/"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "https://price-check-nlsi.onrender.com/$1"
     }
   ]
 }
