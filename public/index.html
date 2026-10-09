@@ -46,7 +46,11 @@
           aria-controls="app-nav-links"
           aria-label="Open navigation menu"
         >
-          Menu
+          <svg class="menu-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path class="menu-icon-top" d="M4 6h16" />
+            <path class="menu-icon-middle" d="M4 12h16" />
+            <path class="menu-icon-bottom" d="M4 18h16" />
+          </svg>
         </button>
         <nav
           class="nav-links"
@@ -420,17 +424,11 @@
           </form>
 
           <div
-            class="login-mode-switch"
+            class="login-mode-prompt"
             id="login-account-copy"
-            role="group"
-            aria-label="Authentication mode"
           >
-            <button type="button" data-auth-mode="signin" aria-pressed="true">
-              Sign in
-            </button>
-            <button type="button" data-auth-mode="signup" aria-pressed="false">
-              Create Account
-            </button>
+            <span id="login-mode-prompt-text">Don’t have an account yet?</span>
+            <button type="button" data-auth-mode="signup">Sign up</button>
           </div>
           <p
             class="auth-message login-auth-message"
@@ -754,7 +752,12 @@
                     <span class="dashboard-stat-label"
                       >Estimates generated</span
                     >
-                    <span class="admin-kpi-badge">⚡ Volume</span>
+                    <span class="admin-kpi-badge">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z" />
+                      </svg>
+                      Volume
+                    </span>
                   </div>
                   <strong id="admin-estimate-total">—</strong>
                   <span class="dashboard-stat-note"
@@ -764,7 +767,13 @@
                 <div class="dashboard-stat admin-stat-card">
                   <div class="admin-kpi-top">
                     <span class="dashboard-stat-label">Registered users</span>
-                    <span class="admin-kpi-badge">👤 Users</span>
+                    <span class="admin-kpi-badge">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="9" cy="8" r="3.5" />
+                        <path d="M2.5 20v-1.5a6.5 6.5 0 0 1 13 0V20M16 5.2a3.5 3.5 0 0 1 0 6.6M18 14a5 5 0 0 1 3.5 4.8V20" />
+                      </svg>
+                      Users
+                    </span>
                   </div>
                   <strong id="admin-user-total">—</strong>
                   <span class="dashboard-stat-note">Google accounts seen</span>
@@ -772,7 +781,12 @@
                 <div class="dashboard-stat admin-stat-card">
                   <div class="admin-kpi-top">
                     <span class="dashboard-stat-label">Feedback records</span>
-                    <span class="admin-kpi-badge">📊 Data</span>
+                    <span class="admin-kpi-badge">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 19V5m0 14h17M8 16v-4m5 4V8m5 8V4" />
+                      </svg>
+                      Data
+                    </span>
                   </div>
                   <strong id="admin-feedback-total">—</strong>
                   <span class="dashboard-stat-note"
@@ -782,9 +796,12 @@
                 <div class="dashboard-stat admin-stat-card">
                   <div class="admin-kpi-top">
                     <span class="dashboard-stat-label">Accepted estimates</span>
-                    <span class="admin-kpi-badge badge-success"
-                      >✓ Accepted</span
-                    >
+                    <span class="admin-kpi-badge badge-success">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m5 12 4 4L19 6" />
+                      </svg>
+                      Accepted
+                    </span>
                   </div>
                   <strong id="admin-accepted-rate">—</strong>
                   <span class="dashboard-stat-note"
@@ -795,8 +812,14 @@
                   <div class="admin-kpi-top">
                     <span class="dashboard-stat-label">Estimate accuracy</span>
                     <span class="admin-kpi-badge badge-accent"
-                      >🎯 Accuracy</span
                     >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" />
+                        <circle cx="12" cy="12" r="5" />
+                        <circle cx="12" cy="12" r="1" />
+                      </svg>
+                      Accuracy
+                    </span>
                   </div>
                   <strong id="admin-accuracy">—</strong>
                   <span class="dashboard-stat-note"

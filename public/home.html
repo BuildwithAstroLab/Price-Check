@@ -124,7 +124,11 @@
         aria-expanded="false"
         aria-controls="public-menu"
       >
-        Menu
+        <svg class="menu-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path class="menu-icon-top" d="M4 6h16" />
+          <path class="menu-icon-middle" d="M4 12h16" />
+          <path class="menu-icon-bottom" d="M4 18h16" />
+        </svg>
       </button>
       <div class="public-theme-toggle-wrap">
         <button
@@ -190,11 +194,9 @@
             ><br />Before you send the quote.
           </h1>
           <p class="public-lede">
-           <p class="public-lede">
-  PriceCheck is an AI-powered freelance pricing calculator that turns
-  project requirements into a structured pricing estimate, so you can
-  approach your next quote with more clarity.
-</p>
+            PriceCheck is an AI-powered freelance pricing calculator that turns
+            project requirements into a structured pricing estimate, helping
+            you understand what to charge before you send the quote.
           </p>
           <div class="public-actions">
             <a class="btn btn-primary" data-estimate-cta href="/login"
@@ -320,13 +322,11 @@
         <p class="section-eyebrow">Built for creative professionals</p>
         <h2>Built for people who sell creative work.</h2>
         <p>
-          <p>
-  Whether you are a photographer, video editor, graphic designer,
-  web developer, brand designer, or another creative professional,
-  PriceCheck helps you estimate what to charge for freelance projects
-  based on scope, complexity, deadline, experience, client type,
-  deliverables, and revisions.
-</p>
+          Whether you are a photographer, video editor, graphic designer, web
+          developer, brand designer, or another creative professional,
+          PriceCheck helps you estimate what to charge for freelance projects
+          based on scope, complexity, deadline, experience, client type,
+          deliverables, and revisions.
         </p>
       </section>
       <section class="final-cta">
@@ -335,9 +335,12 @@
           Describe the project. Understand the scope. Build a more informed
           estimate.
         </p>
-        <!-- <a class="btn btn-primary" data-estimate-cta href="/login"
+        <a
+          class="btn btn-primary mobile-final-cta"
+          data-estimate-cta
+          href="/login"
           >Create a Price Check</a
-        > -->
+        >
       </section>
     </main>
     <footer class="public-footer">

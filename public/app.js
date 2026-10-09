@@ -165,6 +165,9 @@
   ];
   const loginSubmitButton = document.getElementById("login-submit");
   const loginAccountCopy = document.getElementById("login-account-copy");
+  const loginModePromptText = document.getElementById(
+    "login-mode-prompt-text",
+  );
   const loginDivider = document.getElementById("login-divider");
   const loginBrand = document.getElementById("login-brand");
   const loginKicker = document.getElementById("login-kicker");
@@ -181,6 +184,7 @@
       appNavMenuToggle.setAttribute("aria-expanded", "false");
       appNavMenuToggle.setAttribute("aria-label", "Open navigation menu");
       appNavLinks.classList.remove("is-open");
+      document.body.classList.remove("public-menu-open");
     };
 
     appNavMenuToggle.addEventListener("click", () => {
@@ -190,15 +194,45 @@
         "aria-label",
         isOpen ? "Open navigation menu" : "Close navigation menu",
       );
+      appNavMenuToggle.title = isOpen
+        ? "Open navigation menu"
+        : "Close navigation menu";
       appNavLinks.classList.toggle("is-open", !isOpen);
+      document.body.classList.toggle("public-menu-open", !isOpen);
+      appNavMenuToggle
+        .querySelector(".menu-toggle-icon")
+        ?.classList.toggle("is-open", !isOpen);
     });
 
     appNavLinks.addEventListener("click", (event) => {
-      if (event.target.closest("a")) closeAppNavMenu();
+      if (event.target instanceof Element && event.target.closest("a")) {
+        closeAppNavMenu();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (
+        appNavMenuToggle.getAttribute("aria-expanded") === "true" &&
+        event.target instanceof Node &&
+        !appNavLinks.contains(event.target) &&
+        !appNavMenuToggle.contains(event.target)
+      ) {
+        closeAppNavMenu();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape" &&
+        appNavMenuToggle.getAttribute("aria-expanded") === "true"
+      ) {
+        closeAppNavMenu();
+        appNavMenuToggle.focus();
+      }
     });
 
     window
-      .matchMedia("(min-width: 721px)")
+      .matchMedia("(min-width: 768px)")
       .addEventListener("change", closeAppNavMenu);
   }
   const navAdminDashboard = document.getElementById("nav-admin-dashboard");
@@ -545,13 +579,16 @@
       );
       window.PriceCheckNavbar?.updateActive();
     }
-    loginModeButtons.forEach((button) => {
-      button.setAttribute(
-        "aria-pressed",
-        String(button.dataset.authMode === loginMode),
-      );
-    });
     const isSignup = loginMode === "signup";
+    loginModeButtons.forEach((button) => {
+      button.dataset.authMode = isSignup ? "signin" : "signup";
+      button.textContent = isSignup ? "Sign in" : "Sign up";
+    });
+    if (loginModePromptText) {
+      loginModePromptText.textContent = isSignup
+        ? "Already have an account?"
+        : "Don’t have an account yet?";
+    }
 
     if (loginNameField) loginNameField.hidden = !isSignup;
     if (loginNameInput) loginNameInput.required = isSignup;

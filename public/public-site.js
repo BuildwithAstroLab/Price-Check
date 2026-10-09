@@ -95,11 +95,62 @@
   const menuButton = document.querySelector("[data-menu-toggle]");
   const menu = document.querySelector("[data-public-menu]");
   if (menuButton && menu) {
+    const closeMenu = () => {
+      menuButton.setAttribute("aria-expanded", "false");
+      menuButton.setAttribute("aria-label", "Open navigation menu");
+      menu.classList.remove("is-open");
+      document.body.classList.remove("public-menu-open");
+      menuButton
+        .querySelector(".menu-toggle-icon")
+        ?.classList.remove("is-open");
+    };
+
+    menuButton.setAttribute("aria-label", "Open navigation menu");
     menuButton.addEventListener("click", () => {
       const open = menuButton.getAttribute("aria-expanded") === "true";
       menuButton.setAttribute("aria-expanded", String(!open));
+      menuButton.setAttribute(
+        "aria-label",
+        open ? "Open navigation menu" : "Close navigation menu",
+      );
+      menuButton.title = open ? "Open navigation menu" : "Close navigation menu";
       menu.classList.toggle("is-open", !open);
+      document.body.classList.toggle("public-menu-open", !open);
+      menuButton
+        .querySelector(".menu-toggle-icon")
+        ?.classList.toggle("is-open", !open);
     });
+
+    menu.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("a")) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (
+        menuButton.getAttribute("aria-expanded") === "true" &&
+        event.target instanceof Node &&
+        !menu.contains(event.target) &&
+        !menuButton.contains(event.target)
+      ) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape" &&
+        menuButton.getAttribute("aria-expanded") === "true"
+      ) {
+        closeMenu();
+        menuButton.focus();
+      }
+    });
+
+    window
+      .matchMedia("(min-width: 768px)")
+      .addEventListener("change", closeMenu);
   }
 
   applyTheme(getPreferredTheme());
