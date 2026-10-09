@@ -5731,10 +5731,23 @@ textarea:focus {
 }
 
 .telemetry-log-actor-badge {
+  align-items: center;
   color: #ffb74d;
+  display: inline-flex;
   font-size: 0.75rem;
   font-weight: 500;
+  gap: 4px;
   white-space: nowrap;
+}
+
+.telemetry-log-actor-badge svg {
+  fill: none;
+  height: 13px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 13px;
 }
 
 .telemetry-log-entity-badge {

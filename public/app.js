@@ -2430,7 +2430,13 @@
         <span class="telemetry-log-timestamp">[${timeStr}]</span>
         <span class="telemetry-log-sev-badge ${sevClass}">${escapeHtml(sev.toUpperCase())}</span>
         <span class="telemetry-log-action-badge">${action}</span>
-        <span class="telemetry-log-actor-badge">👤 ${actor}</span>
+        <span class="telemetry-log-actor-badge">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.5" />
+            <path d="M5 21v-1.5a7 7 0 0 1 14 0V21" />
+          </svg>
+          ${actor}
+        </span>
         ${entity ? `<span class="telemetry-log-entity-badge">[${entity}]</span>` : ""}
         <span class="telemetry-log-title">${desc}</span>
       `;
