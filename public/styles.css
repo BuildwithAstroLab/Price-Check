@@ -7436,14 +7436,14 @@ main,
     display: none;
     flex-direction: column;
     gap: 8px;
-    left: var(--page-gutter);
+    left: auto;
     margin: 0;
-    max-width: 400px;
+    max-width: min(260px, calc(100vw - 32px));
     padding: 8px;
     position: absolute;
     right: var(--page-gutter);
     top: calc(100% + 8px);
-    width: auto;
+    width: min(260px, calc(100vw - 32px));
     z-index: 40;
   }
 
@@ -7575,6 +7575,11 @@ a.mobile-final-cta {
   }
 
   .nav .auth-area {
+    margin-left: auto;
+    order: 1;
+  }
+
+  .nav.public-nav .auth-area {
     margin-left: auto;
     order: 1;
   }
