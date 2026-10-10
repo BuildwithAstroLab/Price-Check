@@ -17,8 +17,8 @@
     "express": "^4.22.3",
     "google-auth-library": "^10.9.1",
     "nodemon": "^3.1.14",
+    "nodemailer": "^7.0.7",
     "pdfkit": "^0.20.2",
-    "resend": "^6.31.0",
     "three": "^0.186.0",
     "three.js": "^0.77.1"
   },

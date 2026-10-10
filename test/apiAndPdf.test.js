@@ -14,6 +14,9 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "prod-secret";
 process.env.SUPABASE_TEST_URL = "https://test-project.supabase.co";
 process.env.SUPABASE_TEST_SERVICE_ROLE_KEY = "test-secret";
 process.env.SUPABASE_TEST_ANON_KEY = "test-anon-key";
+process.env.EMAIL_UNSUBSCRIBE_SECRET =
+  "unit-test-unsubscribe-secret-with-at-least-32-characters";
+process.env.APP_URL = "https://pricecheck.example";
 process.env.ADMIN_EMAILS = [
   ...new Set([
     ...(process.env.ADMIN_EMAILS || "")
@@ -28,12 +31,15 @@ process.env.ADMIN_EMAILS = [
 const roleTestDatabase = {
   users: new Map(),
   userRoles: new Map(),
+  emailEvents: new Map(),
+  emailPreferences: new Map(),
   estimates: [],
   estimateEvents: [],
   auditLogs: [],
 };
 const supabaseAuthUsers = new Map();
 let nextAuthUserId = 0;
+let nextEmailEventId = 0;
 const newsletterColumnRetryUserIds = new Set();
 let supabaseAuthResponse = null;
 let lastSupabaseAuthRequest = null;
@@ -56,6 +62,7 @@ global.fetch = async (input, init = {}) => {
       headers: status === 204 ? {} : { "Content-Type": "application/json" },
     });
   const getHeader = (name) => new Headers(init.headers).get(name) || "";
+  const rpcMatch = requestUrl.pathname.match(/^\/rest\/v1\/rpc\/([^/]+)$/);
   const filterValues = (key) => {
     const value = requestUrl.searchParams.get(key) || "";
     if (value.startsWith("in.")) {
@@ -193,6 +200,148 @@ global.fetch = async (input, init = {}) => {
     return respond({});
   }
 
+  if (method === "POST" && rpcMatch) {
+    const rpcName = rpcMatch[1];
+    const args = JSON.parse(init.body || "{}");
+    const addEvent = (key, event) => {
+      const existing = roleTestDatabase.emailEvents.get(key);
+      if (existing) return existing;
+      const saved = {
+        id: ++nextEmailEventId,
+        status: "queued",
+        ...event,
+      };
+      roleTestDatabase.emailEvents.set(key, saved);
+      return saved;
+    };
+
+    if (rpcName === "enqueue_email_event") {
+      return respond(
+        addEvent(args.p_event_key, {
+          user_id: args.p_user_id,
+          email_type: args.p_email_type,
+          event_key: args.p_event_key,
+          recipient_email: args.p_recipient_email,
+          payload: args.p_payload,
+        }),
+      );
+    }
+    if (rpcName === "enqueue_email_events") {
+      let inserted = 0;
+      for (const event of args.p_events || []) {
+        const previous = roleTestDatabase.emailEvents.get(event.event_key);
+        addEvent(event.event_key, {
+          user_id: event.user_id,
+          email_type: event.event_type,
+          event_key: event.event_key,
+          recipient_email: event.recipient_email,
+          payload: event.payload,
+        });
+        if (!previous) inserted += 1;
+      }
+      return respond(inserted);
+    }
+    if (rpcName === "update_user_role_with_notifications") {
+      const target = roleTestDatabase.users.get(String(args.p_user_id));
+      if (!target) return respond({ message: "The target user does not exist." }, 404);
+      const previousRole =
+        roleTestDatabase.userRoles.get(String(args.p_user_id))?.role ||
+        "Standard User";
+      if (previousRole !== args.p_expected_previous_role) {
+        return respond({ code: "40001", message: "Role changed concurrently." }, 409);
+      }
+      if (previousRole === args.p_role) {
+        return respond({
+          changed: false,
+          previous_role: previousRole,
+          role: args.p_role,
+        });
+      }
+      roleTestDatabase.userRoles.set(String(args.p_user_id), {
+        user_id: String(args.p_user_id),
+        role: args.p_role,
+        assigned_by: args.p_assigned_by,
+        updated_at: new Date().toISOString(),
+      });
+      addEvent(`role:${args.p_user_id}:${args.p_role}`, {
+        user_id: String(args.p_user_id),
+        email_type: "role_change",
+        event_key: `role:${args.p_user_id}:${args.p_role}`,
+        recipient_email: target.email,
+        payload: args.p_user_payload,
+      });
+      if (
+        ["Owner", "Super Admin"].includes(previousRole) ||
+        ["Owner", "Super Admin"].includes(args.p_role)
+      ) {
+        for (const [adminId, adminRole] of roleTestDatabase.userRoles) {
+          const admin = roleTestDatabase.users.get(String(adminId));
+          if (
+            admin &&
+            adminId !== String(args.p_user_id) &&
+            ["Owner", "Super Admin"].includes(adminRole.role)
+          ) {
+            addEvent(`privileged-role:${args.p_user_id}:${args.p_role}:${adminId}`, {
+              user_id: String(adminId),
+              email_type: "privileged_role_change",
+              event_key: `privileged-role:${args.p_user_id}:${args.p_role}:${adminId}`,
+              recipient_email: admin.email,
+              payload: args.p_admin_payload,
+            });
+          }
+        }
+      }
+      return respond({
+        changed: true,
+        previous_role: previousRole,
+        role: args.p_role,
+      });
+    }
+    if (rpcName === "set_marketing_consent") {
+      const user = roleTestDatabase.users.get(String(args.p_user_id));
+      if (!user) return respond(false);
+      user.newsletter_consent = args.p_consent;
+      roleTestDatabase.emailPreferences.set(String(args.p_user_id), {
+        user_id: String(args.p_user_id),
+        marketing_unsubscribed_at: args.p_consent
+          ? null
+          : new Date().toISOString(),
+      });
+      return respond(true);
+    }
+    if (rpcName === "unsubscribe_email_marketing") {
+      const user = roleTestDatabase.users.get(String(args.p_user_id));
+      if (!user) return respond(false);
+      user.newsletter_consent = false;
+      roleTestDatabase.emailPreferences.set(String(args.p_user_id), {
+        user_id: String(args.p_user_id),
+        marketing_unsubscribed_at: new Date().toISOString(),
+      });
+      return respond(true);
+    }
+    if (rpcName === "set_user_suspension_with_notification") {
+      const user = roleTestDatabase.users.get(String(args.p_user_id));
+      if (!user) return respond({ message: "The target user does not exist." }, 404);
+      const accountStatus = args.p_suspended ? "suspended" : "active";
+      if (user.account_status === accountStatus) {
+        return respond({ changed: false, account_status: accountStatus });
+      }
+      user.account_status = accountStatus;
+      user.suspension_reason = args.p_suspended ? args.p_reason : null;
+      addEvent(`account-status:${args.p_user_id}:${accountStatus}`, {
+        user_id: String(args.p_user_id),
+        email_type: args.p_suspended ? "account_suspended" : "account_restored",
+        event_key: `account-status:${args.p_user_id}:${accountStatus}`,
+        recipient_email: user.email,
+        payload: args.p_suspended
+          ? args.p_suspended_payload
+          : args.p_restored_payload,
+      });
+      return respond({ changed: true, account_status: accountStatus });
+    }
+    return respond({ message: `Unexpected test RPC ${rpcName}` }, 404);
+  }
+
   if (method === "POST" && table === "users") {
     const records = JSON.parse(init.body || "[]");
     const rows = Array.isArray(records) ? records : [records];
@@ -225,6 +374,23 @@ global.fetch = async (input, init = {}) => {
       });
     }
     return respond([], 201);
+  }
+  if (method === "POST" && table === "email_events") {
+    const payload = JSON.parse(init.body || "{}");
+    const records = Array.isArray(payload) ? payload : [payload];
+    const saved = records.map((record) => {
+      const key =
+        record.event_key || `${record.user_id}:${record.email_type}`;
+      const row = { ...roleTestDatabase.emailEvents.get(key), ...record };
+      roleTestDatabase.emailEvents.set(key, row);
+      return row;
+    });
+    return respond(
+      getHeader("Accept").includes("vnd.pgrst.object")
+        ? saved[0] || null
+        : saved,
+      201,
+    );
   }
   if (method === "POST" && table === "user_roles") {
     const records = JSON.parse(init.body || "[]");
@@ -269,6 +435,13 @@ global.fetch = async (input, init = {}) => {
     if (table === "user_roles") {
       for (const id of userIds) {
         roleTestDatabase.userRoles.delete(String(id));
+      }
+    }
+    if (table === "email_events") {
+      for (const id of userIds) {
+        for (const [key, row] of roleTestDatabase.emailEvents) {
+          if (String(row.user_id) === id) roleTestDatabase.emailEvents.delete(key);
+        }
       }
     }
     if (table === "user_estimates") {
@@ -328,7 +501,39 @@ global.fetch = async (input, init = {}) => {
             String(row.email).toLowerCase() === value.slice(3).toLowerCase(),
         );
       }
+      if (key === "account_status" && value.startsWith("eq.")) {
+        rows = rows.filter(
+          (row) => String(row.account_status || "active") === value.slice(3),
+        );
+      }
+      if (key === "newsletter_consent" && value.startsWith("eq.")) {
+        rows = rows.filter(
+          (row) => String(Boolean(row.newsletter_consent)) === value.slice(3),
+        );
+      }
     }
+    if (requestUrl.searchParams.get("limit") === "1") rows = rows.slice(0, 1);
+    const range = getHeader("Range").match(/^(\d+)-(\d+)$/);
+    if (range) rows = rows.slice(Number(range[1]), Number(range[2]) + 1);
+    return respond(
+      getHeader("Accept").includes("vnd.pgrst.object") ? rows[0] || null : rows,
+    );
+  }
+  if (method === "GET" && table === "email_preferences") {
+    let rows = [...roleTestDatabase.emailPreferences.values()];
+    const userIds = filterValues("user_id");
+    if (userIds.length)
+      rows = rows.filter((row) => userIds.includes(String(row.user_id)));
+    return respond(rows);
+  }
+  if (method === "GET" && table === "email_events") {
+    let rows = [...roleTestDatabase.emailEvents.values()];
+    const userIds = filterValues("user_id");
+    const emailTypes = filterValues("email_type");
+    if (userIds.length)
+      rows = rows.filter((row) => userIds.includes(String(row.user_id)));
+    if (emailTypes.length)
+      rows = rows.filter((row) => emailTypes.includes(String(row.email_type)));
     if (requestUrl.searchParams.get("limit") === "1") rows = rows.slice(0, 1);
     return respond(
       getHeader("Accept").includes("vnd.pgrst.object") ? rows[0] || null : rows,
@@ -341,6 +546,19 @@ global.fetch = async (input, init = {}) => {
         const values = filterValues(key);
         if (values.length)
           rows = rows.filter((row) => values.includes(String(row.user_id)));
+      }
+      if (method === "GET" && table === "email_events") {
+        let rows = [...roleTestDatabase.emailEvents.values()];
+        const userIds = filterValues("user_id");
+        const emailTypes = filterValues("email_type");
+        if (userIds.length)
+          rows = rows.filter((row) => userIds.includes(String(row.user_id)));
+        if (emailTypes.length)
+          rows = rows.filter((row) => emailTypes.includes(String(row.email_type)));
+        if (requestUrl.searchParams.get("limit") === "1") rows = rows.slice(0, 1);
+        return respond(
+          getHeader("Accept").includes("vnd.pgrst.object") ? rows[0] || null : rows,
+        );
       }
     }
     if (requestUrl.searchParams.get("limit") === "1") rows = rows.slice(0, 1);
@@ -1163,6 +1381,10 @@ test("email OTP verification creates the PriceCheck session after confirmation",
     token: "123456",
     email: "otp-user@example.com",
   });
+  assert.equal(
+    roleTestDatabase.emailEvents.get("welcome:otp-user")?.status,
+    "queued",
+  );
 });
 
 test("email signup resend uses Supabase signup-confirmation resend", async () => {
@@ -2161,10 +2383,173 @@ test("Administrators can still change another registered user's role", async () 
     roleTestDatabase.userRoles.get(phase12StandardUser.id).role,
     "Analyst",
   );
+  const roleEmailEvent = [...roleTestDatabase.emailEvents.values()].find(
+    (event) =>
+      event.user_id === phase12StandardUser.id &&
+      event.email_type === "role_change",
+  );
+  assert.equal(roleEmailEvent?.status, "queued");
   roleTestDatabase.userRoles.set(phase12StandardUser.id, {
     ...roleTestDatabase.userRoles.get(phase12StandardUser.id),
     role: "Standard User",
   });
+});
+
+test("privileged role changes queue alerts for the affected user and other admins", async () => {
+  const target = {
+    id: "privileged-target",
+    email: "privileged-target@example.com",
+    name: "Privileged Target",
+  };
+  seedRoleUser(target, "Standard User");
+  const response = await fetch(`${baseUrl}/api/admin/access`, {
+    method: "POST",
+    headers: phase12Auth(phase12SuperAdmin),
+    body: JSON.stringify({
+      userId: target.id,
+      userEmail: target.email,
+      role: "Super Admin",
+    }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(roleTestDatabase.userRoles.get(target.id).role, "Super Admin");
+  assert.ok(
+    [...roleTestDatabase.emailEvents.values()].some(
+      (event) =>
+        event.user_id === target.id && event.email_type === "role_change",
+    ),
+  );
+  assert.ok(
+    [...roleTestDatabase.emailEvents.values()].some(
+      (event) =>
+        event.user_id === phase12SuperAdmin.id &&
+        event.email_type === "privileged_role_change",
+    ),
+  );
+});
+
+test("marketing campaigns target opted-in users and support confirmed unsubscribe", async () => {
+  const optedInUser = {
+    id: "campaign-opt-in",
+    email: "campaign-opt-in@example.com",
+    name: "Campaign User",
+  };
+  const optedOutUser = {
+    id: "campaign-opt-out",
+    email: "campaign-opt-out@example.com",
+    name: "No Campaign User",
+  };
+  seedRoleUser(optedInUser, "Standard User");
+  seedRoleUser(optedOutUser, "Standard User");
+  roleTestDatabase.users.get(optedInUser.id).newsletter_consent = true;
+  roleTestDatabase.emailPreferences.set(optedInUser.id, {
+    user_id: optedInUser.id,
+    marketing_unsubscribed_at: null,
+  });
+
+  const campaignId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const expectedEligibleCount = [...roleTestDatabase.users.values()].filter(
+    (user) =>
+      user.newsletter_consent &&
+      (user.account_status || "active") === "active" &&
+      !roleTestDatabase.emailPreferences.get(String(user.id))
+        ?.marketing_unsubscribed_at,
+  ).length;
+  const response = await fetch(`${baseUrl}/api/admin/marketing-campaigns`, {
+    method: "POST",
+    headers: phase12Auth(phase12SuperAdmin),
+    body: JSON.stringify({
+      campaignId,
+      subject: "Product update",
+      html: "<p>PriceCheck has new features.</p>",
+      text: "PriceCheck has new features.",
+    }),
+  });
+  const result = await response.json();
+  assert.equal(response.status, 202);
+  assert.equal(result.queued, expectedEligibleCount);
+
+  const event = [...roleTestDatabase.emailEvents.values()].find(
+    (entry) => entry.event_key === `marketing:${campaignId}:${optedInUser.id}`,
+  );
+  assert.ok(event);
+  assert.equal(
+    [...roleTestDatabase.emailEvents.values()].some(
+      (entry) => entry.event_key === `marketing:${campaignId}:${optedOutUser.id}`,
+    ),
+    false,
+  );
+
+  const { createUnsubscribeToken } = require("../lib/emailNotifications");
+  const token = createUnsubscribeToken(optedInUser.id, campaignId);
+  const confirmation = await fetch(
+    `${baseUrl}/unsubscribe?token=${encodeURIComponent(token)}`,
+  );
+  assert.equal(confirmation.status, 200);
+  assert.match(await confirmation.text(), /Confirm unsubscribe/);
+
+  const unsubscribed = await fetch(`${baseUrl}/unsubscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ token }),
+  });
+  assert.equal(unsubscribed.status, 200);
+  assert.equal(roleTestDatabase.users.get(optedInUser.id).newsletter_consent, false);
+  assert.ok(
+    roleTestDatabase.emailPreferences.get(optedInUser.id)
+      .marketing_unsubscribed_at,
+  );
+});
+
+test("admin suspension and restoration update account access and queue notices", async () => {
+  const suspendedResponse = await fetch(
+    `${baseUrl}/api/admin/users/${phase12StandardUser.id}/status`,
+    {
+      method: "PATCH",
+      headers: phase12Auth(phase12SuperAdmin),
+      body: JSON.stringify({ suspended: true, reason: "Policy review" }),
+    },
+  );
+  assert.equal(suspendedResponse.status, 200);
+  assert.equal(
+    roleTestDatabase.users.get(phase12StandardUser.id).account_status,
+    "suspended",
+  );
+  const suspendedSession = await fetch(`${baseUrl}/api/auth/session`, {
+    headers: {
+      Cookie: `pricecheck_session=${createSession(phase12StandardUser)}`,
+    },
+  });
+  assert.equal(suspendedSession.status, 403);
+  assert.equal((await suspendedSession.json()).code, "ACCOUNT_SUSPENDED");
+  assert.ok(
+    [...roleTestDatabase.emailEvents.values()].some(
+      (event) =>
+        event.user_id === phase12StandardUser.id &&
+        event.email_type === "account_suspended",
+    ),
+  );
+
+  const restoredResponse = await fetch(
+    `${baseUrl}/api/admin/users/${phase12StandardUser.id}/status`,
+    {
+      method: "PATCH",
+      headers: phase12Auth(phase12SuperAdmin),
+      body: JSON.stringify({ suspended: false }),
+    },
+  );
+  assert.equal(restoredResponse.status, 200);
+  assert.equal(
+    roleTestDatabase.users.get(phase12StandardUser.id).account_status || "active",
+    "active",
+  );
+  assert.ok(
+    [...roleTestDatabase.emailEvents.values()].some(
+      (event) =>
+        event.user_id === phase12StandardUser.id &&
+        event.email_type === "account_restored",
+    ),
+  );
 });
 
 test("ID-only role promotions do not create fake @assigned.local rows in the RBAC UI", async () => {

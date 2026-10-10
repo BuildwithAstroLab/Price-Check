@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
+const crypto = require("crypto");
 const os = require("os");
 const path = require("path");
 
@@ -29,13 +30,20 @@ const {
   saveAuditLog,
   getAuditLogs,
   deleteAuditLogs,
-  saveUserRole,
   getUserRoles,
   getRegisteredUsers,
   getUserByEmail,
   getUserById,
-  saveEmailEvent,
   getEmailEvent,
+  enqueueEmailEvent,
+  enqueueEmailEvents,
+  dispatchEmailNotifications,
+  updateUserRoleWithNotifications,
+  setUserSuspensionWithNotification,
+  setMarketingConsent,
+  unsubscribeEmailMarketing,
+  getMarketingRecipients,
+  getUserAccountStatus,
   getSupabaseClient,
   getSupabaseAuthConfig,
   savePricingConfig,
@@ -60,7 +68,23 @@ const {
   verifyGoogleCredential,
   INACTIVITY_TIMEOUT_SECONDS,
 } = require("./lib/auth");
-const { sendWelcomeEmail } = require("./lib/emailService");
+const {
+  createWelcomeEmailHtml,
+  createWelcomeEmailText,
+  createRoleChangeEmailHtml,
+  createRoleChangeEmailText,
+  createPrivilegedRoleChangeEmailHtml,
+  createPrivilegedRoleChangeEmailText,
+  createAccountStatusEmailHtml,
+  createAccountStatusEmailText,
+  createMarketingEmailHtml,
+  createMarketingEmailText,
+  getAppUrl,
+} = require("./lib/emailService");
+const {
+  createUnsubscribeToken,
+  verifyUnsubscribeToken,
+} = require("./lib/emailNotifications");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -250,6 +274,7 @@ function recordAdminNotification(notification) {
 }
 
 app.use(express.json({ limit: "20kb" }));
+app.use(express.urlencoded({ extended: false, limit: "4kb" }));
 app.post("/api/notifications/frontend", (req, res) => {
   const clientKey = req.ip || req.socket.remoteAddress || "unknown";
   const now = Date.now();
@@ -526,25 +551,74 @@ function isVerifiedAuthUser(user) {
 
 async function triggerWelcomeEmailIfNeeded(authUser, user) {
   if (!user?.email || !user?.id) return { sent: false, skipped: true };
-  const existingEvent = await getEmailEvent(user.id, "welcome");
-  if (existingEvent?.status === "sent") {
-    return { sent: false, skipped: true, reason: "already-sent" };
+  try {
+    const existingEvent = await getEmailEvent(user.id, "welcome");
+    if (
+      existingEvent &&
+      ["queued", "processing", "sent"].includes(existingEvent.status)
+    ) {
+      return { sent: false, skipped: true, reason: "already-sent" };
+    }
+  } catch (error) {
+    console.error(
+      "Welcome email deduplication lookup failed:",
+      error?.message || error,
+    );
   }
 
-  const result = await sendWelcomeEmail({
-    id: user.id,
-    name: user.name || authUser?.user_metadata?.full_name || user.email,
-    email: user.email,
+  try {
+    const firstName = String(
+      user.name || authUser?.user_metadata?.full_name || user.email,
+    )
+      .trim()
+      .split(/\s+/)[0];
+    await enqueueEmailNotification({
+      userId: user.id,
+      emailType: "welcome",
+      eventKey: `welcome:${user.id}`,
+      recipientEmail: user.email,
+      payload: {
+        subject: "Welcome to PriceCheck",
+        html: createWelcomeEmailHtml(firstName),
+        text: createWelcomeEmailText(firstName),
+        reply_to: process.env.EMAIL_REPLY_TO || undefined,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Welcome email could not be queued:",
+      error?.message || error,
+    );
+    return { sent: false, skipped: false, reason: "queue-error" };
+  }
+
+  return { sent: false, skipped: false, queued: true };
+}
+
+async function enqueueEmailNotification({
+  userId,
+  emailType,
+  eventKey,
+  recipientEmail,
+  payload,
+  dispatch = true,
+}) {
+  const event = await enqueueEmailEvent({
+    userId,
+    emailType,
+    eventKey,
+    recipientEmail,
+    payload,
   });
-
-  await saveEmailEvent({
-    userId: user.id,
-    emailType: "welcome",
-    status: result.sent ? "sent" : result.skipped ? "skipped" : "failed",
-    providerMessageId: result.providerMessageId || null,
-  }).catch(() => null);
-
-  return result;
+  if (dispatch && process.env.NODE_ENV !== "test") {
+    void dispatchEmailNotifications().catch((error) => {
+      console.warn(
+        "Email notification dispatch deferred to the retry worker:",
+        error?.message || error,
+      );
+    });
+  }
+  return event;
 }
 
 async function cleanupTargetUserRecords(targetEmail, userIds = []) {
@@ -727,6 +801,12 @@ async function finishPasswordSignIn(authUser, res) {
   }
 
   const existingProfile = await getUserByEmail(authUser.email);
+  if (existingProfile?.account_status === "suspended") {
+    return res.status(403).json({
+      error: "This account is suspended. Contact support for help.",
+      code: "ACCOUNT_SUSPENDED",
+    });
+  }
   const newsletterConsent = Boolean(
     existingProfile?.newsletter_consent ??
     authUser.user_metadata?.newsletter_consent ??
@@ -750,6 +830,9 @@ async function finishPasswordSignIn(authUser, res) {
   };
   markUserOnline(user);
   await saveUser(user);
+  if (!existingProfile?.id && newsletterConsent) {
+    await setMarketingConsent(user.id, true);
+  }
   try {
     await triggerWelcomeEmailIfNeeded(authUser, user);
   } catch (error) {
@@ -960,6 +1043,13 @@ app.get("/api/auth/session", async (req, res) => {
     }
     return res.json({ user: freshUser || user });
   } catch (error) {
+    if (error?.code === "account_suspended") {
+      res.set("Set-Cookie", sessionCookie("", 0));
+      return res.status(403).json({
+        error: "This account is suspended. Contact support for help.",
+        code: "ACCOUNT_SUSPENDED",
+      });
+    }
     console.error("Session role refresh failed:", error?.message || error);
     return res.status(503).json({ error: "User role storage is unavailable." });
   }
@@ -972,6 +1062,12 @@ app.post("/api/auth/google", async (req, res) => {
     credentialVerified = true;
     const existingProfile = await getUserByEmail(user.email);
     if (existingProfile?.id) {
+      if (existingProfile.account_status === "suspended") {
+        return res.status(403).json({
+          error: "This account is suspended. Contact support for help.",
+          code: "ACCOUNT_SUSPENDED",
+        });
+      }
       user.id = existingProfile.id;
       user.name = existingProfile.name || user.name;
       user.skillWork = existingProfile.skill_work || "";
@@ -983,6 +1079,13 @@ app.post("/api/auth/google", async (req, res) => {
       throw new Error("Supabase profile and role storage is not configured.");
     }
     await saveUser(user);
+    if (!existingProfile?.id) {
+      try {
+        await triggerWelcomeEmailIfNeeded(user, user);
+      } catch (error) {
+        console.warn("Welcome email trigger failed:", error?.message || error);
+      }
+    }
     const authenticatedUser = await hydrateUserFromDatabase(user);
     res.set("Cache-Control", "no-store");
     res.set("Set-Cookie", sessionCookie(createSession(authenticatedUser)));
@@ -1043,7 +1146,15 @@ app.post("/api/account/profile", async (req, res) => {
   }
 
   try {
+    if ((await getUserAccountStatus(currentUser.id)) === "suspended") {
+      res.set("Set-Cookie", sessionCookie("", 0));
+      return res.status(403).json({
+        error: "This account is suspended. Contact support for help.",
+        code: "ACCOUNT_SUSPENDED",
+      });
+    }
     await saveUser(updatedUser);
+    await setMarketingConsent(updatedUser.id, newsletterConsent);
     const authenticatedUser = await hydrateUserFromDatabase(updatedUser);
     markUserOnline(authenticatedUser);
     res.set("Cache-Control", "no-store");
@@ -1057,7 +1168,7 @@ app.post("/api/account/profile", async (req, res) => {
   }
 });
 
-function getAuthenticatedUser(req, res) {
+async function getAuthenticatedUser(req, res) {
   const user = readSession(req.get("cookie"));
   if (!user) {
     res.status(401).json({ error: "Sign in to access saved estimates." });
@@ -1067,11 +1178,25 @@ function getAuthenticatedUser(req, res) {
     res.status(503).json({ error: "Account storage is not configured." });
     return null;
   }
+  try {
+    if ((await getUserAccountStatus(user.id)) === "suspended") {
+      res.set("Set-Cookie", sessionCookie("", 0));
+      res.status(403).json({
+        error: "This account is suspended. Contact support for help.",
+        code: "ACCOUNT_SUSPENDED",
+      });
+      return null;
+    }
+  } catch (error) {
+    console.error("Account status lookup failed:", error?.message || error);
+    res.status(503).json({ error: "User account storage is unavailable." });
+    return null;
+  }
   return user;
 }
 
 app.get("/api/account/estimates", async (req, res) => {
-  const user = getAuthenticatedUser(req, res);
+  const user = await getAuthenticatedUser(req, res);
   if (!user) return;
   try {
     const estimates = await getUserEstimates(user.id);
@@ -1095,7 +1220,7 @@ app.get("/api/account/estimates", async (req, res) => {
 });
 
 app.delete("/api/account/estimates", async (req, res) => {
-  const user = getAuthenticatedUser(req, res);
+  const user = await getAuthenticatedUser(req, res);
   if (!user) return;
   try {
     await deleteAllUserEstimates(user.id);
@@ -1109,7 +1234,7 @@ app.delete("/api/account/estimates", async (req, res) => {
 });
 
 app.delete("/api/account/estimates/:estimateId", async (req, res) => {
-  const user = getAuthenticatedUser(req, res);
+  const user = await getAuthenticatedUser(req, res);
   const estimateId = Number(req.params.estimateId);
   if (!user) return;
   if (!Number.isSafeInteger(estimateId) || estimateId < 1) {
@@ -1549,6 +1674,11 @@ async function getDatabaseUserRole(user) {
 
 async function hydrateUserFromDatabase(user) {
   if (!user) return null;
+  if ((await getUserAccountStatus(user.id)) === "suspended") {
+    const error = new Error("The account is suspended.");
+    error.code = "account_suspended";
+    throw error;
+  }
   const persistedRole = await getDatabaseUserRole(user);
   if (!persistedRole) {
     throw new Error("The user's persistent role is missing.");
@@ -1583,6 +1713,21 @@ async function requirePermission(req, res, requiredPermission) {
   const sessionUser = readSession(req.get("cookie"));
   if (!sessionUser) {
     res.status(403).json({ error: "Admin access required." });
+    return null;
+  }
+
+  try {
+    if ((await getUserAccountStatus(sessionUser.id)) === "suspended") {
+      res.set("Set-Cookie", sessionCookie("", 0));
+      res.status(403).json({
+        error: "This account is suspended. Contact support for help.",
+        code: "ACCOUNT_SUSPENDED",
+      });
+      return null;
+    }
+  } catch (error) {
+    console.error("Account status lookup failed:", error?.message || error);
+    res.status(503).json({ error: "User account storage is unavailable." });
     return null;
   }
 
@@ -1812,6 +1957,20 @@ app.post("/api/pricecheck", async (req, res) => {
   const currency = validateCurrency(req.body?.currency);
   const deliverables = normalizeDeliverables(req.body?.deliverables);
   const currentUser = readSession(req.get("cookie"));
+  if (currentUser) {
+    try {
+      if ((await getUserAccountStatus(currentUser.id)) === "suspended") {
+        res.set("Set-Cookie", sessionCookie("", 0));
+        return res.status(403).json({
+          error: "This account is suspended. Contact support for help.",
+          code: "ACCOUNT_SUSPENDED",
+        });
+      }
+    } catch (error) {
+      console.error("Account status lookup failed:", error?.message || error);
+      return res.status(503).json({ error: "User account storage is unavailable." });
+    }
+  }
 
   if (!description) {
     logRequestStats(stats, "REJECTED_EMPTY_DESCRIPTION");
@@ -2450,25 +2609,79 @@ async function updateUserRole(req, res, targetUserId) {
     console.error("Previous role lookup failed:", error?.message || error);
     return res.status(503).json({ error: "User role storage is unavailable." });
   }
-  const previousEntry = previousRoles.find(
-    (entry) =>
-      String(entry.user_id) === String(targetUser.id) ||
-      String(entry.user_id).trim().toLowerCase() ===
+  const previousEntry =
+    previousRoles.find(
+      (entry) => String(entry.user_id) === String(targetUser.id),
+    ) ||
+    previousRoles.find(
+      (entry) =>
+        String(entry.user_id).trim().toLowerCase() ===
         String(targetUser.email).trim().toLowerCase(),
-  );
+    );
   const prevRole = previousEntry?.role || "Standard User";
 
-  try {
-    const persisted = await saveUserRole(
-      targetUser.id,
+  const firstName = String(targetUser.name || targetUser.email)
+    .trim()
+    .split(/\s+/)[0];
+  const userEmailPayload = {
+    subject: "Your PriceCheck access changed",
+    html: createRoleChangeEmailHtml({
+      firstName,
+      previousRole: prevRole,
       role,
-      currentUser?.email || "admin",
-      targetUser.email,
-    );
-    if (!persisted) throw new Error("Role update was not persisted.");
+    }),
+    text: createRoleChangeEmailText({
+      firstName,
+      previousRole: prevRole,
+      role,
+    }),
+    reply_to: process.env.EMAIL_REPLY_TO || undefined,
+  };
+  const adminEmailPayload = {
+    subject: "PriceCheck administrator access changed",
+    html: createPrivilegedRoleChangeEmailHtml({
+      firstName: "there",
+      targetEmail: targetUser.email,
+      previousRole: prevRole,
+      role,
+    }),
+    text: createPrivilegedRoleChangeEmailText({
+      firstName: "there",
+      targetEmail: targetUser.email,
+      previousRole: prevRole,
+      role,
+    }),
+    reply_to: process.env.EMAIL_REPLY_TO || undefined,
+  };
+
+  let roleUpdate;
+  try {
+    roleUpdate = await updateUserRoleWithNotifications({
+      userId: targetUser.id,
+      role,
+      assignedBy: currentUser?.email || "admin",
+      expectedPreviousRole: prevRole,
+      userPayload: userEmailPayload,
+      adminPayload: adminEmailPayload,
+    });
+    if (!roleUpdate) throw new Error("Role update was not persisted.");
   } catch (error) {
+    if (error?.code === "40001") {
+      return res.status(409).json({
+        error: "The user's role changed. Refresh and try again.",
+      });
+    }
     console.error("Role update persistence failed:", error?.message || error);
     return res.status(503).json({ error: "The user role could not be saved." });
+  }
+
+  if (roleUpdate.changed && process.env.NODE_ENV !== "test") {
+    void dispatchEmailNotifications().catch((error) => {
+      console.warn(
+        "Role notification dispatch deferred to the retry worker:",
+        error?.message || error,
+      );
+    });
   }
 
   recordAdminNotification({
@@ -2483,9 +2696,10 @@ async function updateUserRole(req, res, targetUserId) {
     success: true,
     userId: targetUser.id,
     userEmail: targetUser.email,
-    previousRole: prevRole,
-    role,
+    previousRole: roleUpdate.previous_role || prevRole,
+    role: roleUpdate.role || role,
     permissions: RBAC_ROLES[role].permissions,
+    emailNotification: roleUpdate.changed ? "queued" : "unchanged",
   });
 }
 
@@ -2493,6 +2707,225 @@ app.post("/api/admin/access", (req, res) => updateUserRole(req, res));
 app.patch("/api/admin/users/:userId/role", (req, res) =>
   updateUserRole(req, res, req.params.userId),
 );
+
+app.patch("/api/admin/users/:userId/status", async (req, res) => {
+  const auth = await requirePermission(req, res, "access");
+  if (!auth) return;
+  const userId = String(req.params.userId || "").trim();
+  const suspended = req.body?.suspended;
+  const reason = String(req.body?.reason || "")
+    .trim()
+    .slice(0, 500);
+  if (!userId || typeof suspended !== "boolean") {
+    return res.status(400).json({
+      error: "Provide a user ID and a boolean suspended value.",
+    });
+  }
+  if (String(auth.user.id) === userId) {
+    return res.status(403).json({ error: "You cannot suspend your own account." });
+  }
+
+  let targetUser;
+  try {
+    targetUser = await getUserById(userId);
+  } catch (error) {
+    console.error("Account status target lookup failed:", error?.message || error);
+    return res.status(503).json({ error: "User account storage is unavailable." });
+  }
+  if (!targetUser) {
+    return res.status(404).json({ error: "The target user does not exist." });
+  }
+  if (DEFAULT_ADMIN_EMAILS.has(String(targetUser.email || "").toLowerCase())) {
+    return res.status(403).json({
+      error: "The default admin account is protected and cannot be suspended.",
+    });
+  }
+
+  const firstName = String(targetUser.name || targetUser.email)
+    .trim()
+    .split(/\s+/)[0];
+  let result;
+  try {
+    result = await setUserSuspensionWithNotification({
+      userId,
+      suspended,
+      reason,
+      suspendedPayload: {
+        subject: "Your PriceCheck account was suspended",
+        html: createAccountStatusEmailHtml({ firstName, reason }),
+        text: createAccountStatusEmailText({ firstName, reason }),
+        reply_to: process.env.EMAIL_REPLY_TO || undefined,
+      },
+      restoredPayload: {
+        subject: "Your PriceCheck account was restored",
+        html: createAccountStatusEmailHtml({ firstName, restored: true }),
+        text: createAccountStatusEmailText({ firstName, restored: true }),
+        reply_to: process.env.EMAIL_REPLY_TO || undefined,
+      },
+    });
+  } catch (error) {
+    console.error("Account status update failed:", error?.message || error);
+    return res.status(503).json({ error: "The account status could not be saved." });
+  }
+
+  if (result?.changed && process.env.NODE_ENV !== "test") {
+    void dispatchEmailNotifications().catch((error) => {
+      console.warn(
+        "Account status notification dispatch deferred to the retry worker:",
+        error?.message || error,
+      );
+    });
+  }
+  recordAdminNotification({
+    source: "admin",
+    severity: suspended ? "warning" : "info",
+    title: suspended ? "User account suspended" : "User account restored",
+    message: `${auth.user.email || "An administrator"} ${suspended ? "suspended" : "restored"} ${targetUser.email}.`,
+    path: req.path,
+  });
+  return res.json({
+    success: true,
+    userId,
+    accountStatus: result?.account_status || (suspended ? "suspended" : "active"),
+    notification: result?.changed ? "queued" : "unchanged",
+  });
+});
+
+app.post("/api/admin/marketing-campaigns", async (req, res) => {
+  const auth = await requirePermission(req, res, "access");
+  if (!auth) return;
+  const campaignId = String(req.body?.campaignId || "").trim();
+  const subject = String(req.body?.subject || "").trim();
+  const html = String(req.body?.html || "");
+  const text = String(req.body?.text || "").trim();
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      campaignId,
+    ) ||
+    !subject ||
+    subject.length > 160 ||
+    (!html.trim() && !text) ||
+    html.length > 60000 ||
+    text.length > 60000
+  ) {
+    return res.status(400).json({
+      error: "Provide a campaign UUID, a subject, and email content within the size limits.",
+    });
+  }
+  if (!process.env.APP_URL || !process.env.EMAIL_UNSUBSCRIBE_SECRET) {
+    return res.status(503).json({
+      error: "Marketing email URL and unsubscribe configuration are required.",
+    });
+  }
+  let appUrl;
+  try {
+    appUrl = new URL(process.env.APP_URL);
+  } catch {
+    return res.status(503).json({ error: "APP_URL is not a valid URL." });
+  }
+  if (
+    process.env.NODE_ENV === "production" &&
+    appUrl.protocol !== "https:"
+  ) {
+    return res.status(503).json({ error: "APP_URL must use HTTPS in production." });
+  }
+
+  let recipients;
+  try {
+    recipients = await getMarketingRecipients();
+  } catch (error) {
+    console.error("Marketing recipient lookup failed:", error?.message || error);
+    return res.status(503).json({ error: "Marketing preferences are unavailable." });
+  }
+
+  let queued = 0;
+  try {
+    const events = recipients.map((recipient) => {
+      const token = createUnsubscribeToken(recipient.id, campaignId);
+      const unsubscribeUrl = new URL("/unsubscribe", appUrl);
+      unsubscribeUrl.searchParams.set("token", token);
+      return {
+        userId: recipient.id,
+        emailType: "marketing",
+        eventKey: `marketing:${campaignId}:${recipient.id}`,
+        recipientEmail: recipient.email,
+        payload: {
+          subject,
+          html: createMarketingEmailHtml({
+            subject,
+            bodyHtml: html,
+            unsubscribeUrl: unsubscribeUrl.toString(),
+          }),
+          text: createMarketingEmailText({
+            text: text || "Please view this email in an HTML-capable email client.",
+            unsubscribeUrl: unsubscribeUrl.toString(),
+          }),
+          reply_to: process.env.EMAIL_REPLY_TO || undefined,
+        },
+      };
+    });
+    for (let offset = 0; offset < events.length; offset += 25) {
+      queued += await enqueueEmailEvents(events.slice(offset, offset + 25));
+    }
+  } catch (error) {
+    console.error("Marketing campaign queue failed:", error?.message || error);
+    return res.status(503).json({
+      error: "The campaign could not be fully queued. Retry with the same campaign ID.",
+      campaignId,
+      queued,
+    });
+  }
+
+  if (recipients.length && process.env.NODE_ENV !== "test") {
+    void dispatchEmailNotifications().catch((error) => {
+      console.warn(
+        "Marketing dispatch deferred to the retry worker:",
+        error?.message || error,
+      );
+    });
+  }
+  return res.status(202).json({
+    success: true,
+    campaignId,
+    queued,
+  });
+});
+
+app.get("/unsubscribe", (req, res) => {
+  const token = String(req.query?.token || "");
+  if (!process.env.EMAIL_UNSUBSCRIBE_SECRET) {
+    return res.status(503).send("Email preferences are unavailable.");
+  }
+  if (!verifyUnsubscribeToken(token)) {
+    return res.status(400).send("This unsubscribe link is invalid or expired.");
+  }
+  res.set("Cache-Control", "no-store");
+  res.type("html").send(
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe</title><body style="font-family:Arial,sans-serif;max-width:520px;margin:12vh auto;padding:24px;color:#111827"><h1>Unsubscribe from promotional email?</h1><p>This will stop PriceCheck product updates. Account and security notices will continue.</p><form method="post" action="/unsubscribe"><input type="hidden" name="token" value="${token}"><button type="submit">Confirm unsubscribe</button></form></body></html>`,
+  );
+});
+
+app.post("/unsubscribe", async (req, res) => {
+  const token = String(req.body?.token || "");
+  if (!process.env.EMAIL_UNSUBSCRIBE_SECRET) {
+    return res.status(503).send("Email preferences are unavailable.");
+  }
+  const tokenData = verifyUnsubscribeToken(token);
+  if (!tokenData) {
+    return res.status(400).send("This unsubscribe link is invalid or expired.");
+  }
+  try {
+    const updated = await unsubscribeEmailMarketing(tokenData.userId);
+    if (!updated) return res.status(404).send("The account could not be found.");
+    res.set("Cache-Control", "no-store");
+    return res
+      .type("html")
+      .send("<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Unsubscribed</title><body style=\"font-family:Arial,sans-serif;max-width:520px;margin:12vh auto;padding:24px;color:#111827\"><h1>You are unsubscribed</h1><p>You will no longer receive PriceCheck promotional emails. Account and security notices will continue.</p></body></html>");
+  } catch (error) {
+    console.error("Marketing unsubscribe failed:", error?.message || error);
+    return res.status(503).send("Your email preferences could not be updated. Please try again.");
+  }
+});
 
 async function getAdminTelemetryData(req, res) {
   if (!(await requirePermission(req, res, "telemetry"))) return;
