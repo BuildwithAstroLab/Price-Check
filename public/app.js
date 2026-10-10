@@ -180,6 +180,26 @@
   const appNavMenuToggle = document.getElementById("app-nav-menu-toggle");
   const appNavLinks = document.getElementById("app-nav-links");
   if (appNavMenuToggle && appNavLinks) {
+    const themeToggleWrap = document.querySelector(
+      ".auth-area > .public-theme-toggle-wrap",
+    );
+    if (themeToggleWrap) {
+      const themeTogglePlaceholder = document.createComment(
+        "Theme toggle desktop position",
+      );
+      themeToggleWrap.before(themeTogglePlaceholder);
+      const mobileNavigation = window.matchMedia("(max-width: 767px)");
+      const placeThemeToggle = () => {
+        if (mobileNavigation.matches) {
+          appNavLinks.appendChild(themeToggleWrap);
+        } else {
+          themeTogglePlaceholder.after(themeToggleWrap);
+        }
+      };
+      placeThemeToggle();
+      mobileNavigation.addEventListener("change", placeThemeToggle);
+    }
+
     const closeAppNavMenu = () => {
       appNavMenuToggle.setAttribute("aria-expanded", "false");
       appNavMenuToggle.setAttribute("aria-label", "Open navigation menu");
@@ -259,6 +279,7 @@
   let authSubmitCooldownUntil = 0;
   let otpResendCooldownUntil = 0;
   let otpVerifyCooldownUntil = 0;
+  let otpResendInFlight = false;
   let otpVerifyInFlight = false;
   const OTP_RESEND_COOLDOWN_SECONDS = 60;
 
@@ -304,11 +325,12 @@
       0,
       Math.ceil((otpResendCooldownUntil - Date.now()) / 1000),
     );
-    const disabled = remainingSeconds > 0;
+    const disabled = otpResendInFlight || remainingSeconds > 0;
     loginOtpResend.disabled = disabled;
     loginOtpResend.setAttribute("aria-disabled", String(disabled));
-    loginOtpResend.textContent =
-      remainingSeconds > 0
+    loginOtpResend.textContent = otpResendInFlight
+      ? "Sending..."
+      : remainingSeconds > 0
         ? `Resend code (${remainingSeconds}s)`
         : "Resend code";
   }
@@ -316,9 +338,18 @@
   function updateOtpStatus(message = "", state = "") {
     if (!loginOtpStatus) return;
     loginOtpStatus.textContent = message;
-    loginOtpStatus.classList.toggle("is-error", state === "error");
-    loginOtpStatus.classList.toggle("is-success", state === "success");
+    ["error", "success", "warning", "info"].forEach((status) => {
+      loginOtpStatus.classList.toggle(
+        `is-${status}`,
+        Boolean(message) && state === status,
+      );
+    });
     loginOtpStatus.hidden = !message;
+    loginOtpStatus.setAttribute("role", state === "error" ? "alert" : "status");
+    loginOtpStatus.setAttribute(
+      "aria-live",
+      state === "error" ? "assertive" : "polite",
+    );
   }
 
   function showEmailOtp(email) {
@@ -341,6 +372,7 @@
     if (otpSubmit) otpSubmit.textContent = "Verify email";
     updateOtpStatus();
     showAuthMessage();
+    showToast("Verification code sent. Check your email.", "success");
     if (loginOtpInput) {
       loginOtpInput.value = "";
       loginOtpInput.focus();
@@ -420,16 +452,104 @@
     );
   }
 
-  function showAuthMessage(message = "") {
+  function showAuthMessage(message = "", type = "error") {
     const target = isLoginPath ? loginAuthMessage : authMessage;
     const other = isLoginPath ? authMessage : loginAuthMessage;
     if (other) {
       other.textContent = "";
       other.hidden = true;
     }
+    if (!isLoginPath) {
+      if (target) {
+        target.textContent = "";
+        target.hidden = true;
+      }
+      if (message) showToast(message, type);
+      return;
+    }
     if (!target) return;
     target.textContent = message;
     target.hidden = !message;
+    ["error", "success", "warning", "info"].forEach((state) => {
+      target.classList.toggle(`is-${state}`, Boolean(message) && type === state);
+    });
+    target.setAttribute("role", type === "error" ? "alert" : "status");
+    target.setAttribute("aria-live", type === "error" ? "assertive" : "polite");
+  }
+
+  function getAuthFeedbackMessage(context, { status, code, message } = {}) {
+    const safeCode = String(code || "").toUpperCase();
+    const safeMessage = String(message || "").toLowerCase();
+    if (
+      safeCode === "ACCOUNT_SUSPENDED" ||
+      /account.{0,24}suspend/.test(safeMessage)
+    ) {
+      return "Your account has been suspended. Please contact support.";
+    }
+    if (
+      /confirm your email|email.{0,20}(not confirmed|unverified)|unverified email/.test(
+        safeMessage,
+      )
+    ) {
+      return "Please verify your email before continuing.";
+    }
+    if (
+      context === "signin" &&
+      (status === 401 ||
+        /invalid login credentials|invalid credentials|user not found/.test(
+          safeMessage,
+        ))
+    ) {
+      return "Invalid email or password. Please try again.";
+    }
+    if (    context === "signup" &&
+    /already exists|email already/.test(safeMessage)) {
+      return "An account with this email already exists. Try signing in instead.";
+    }
+    if (context === "google") {
+      return "Google sign-in failed. Please try again.";
+    }
+    if (context === "signup") {
+      return "We couldn't create your account. Please check your details and try again.";
+    }
+    return "We couldn't sign you in. Please check your connection and try again.";
+  }
+
+  function getOtpFeedbackMessage(data, status) {
+    const code = String(data?.code || "").toLowerCase();
+    const message = String(data?.error || "").toLowerCase();
+    if (
+      String(data?.code || "").toUpperCase() === "ACCOUNT_SUSPENDED" ||
+      /account.{0,24}suspend/.test(message)
+    ) {
+      return "Your account has been suspended. Please contact support.";
+    }
+    if (
+      /confirm your email|email.{0,20}(not confirmed|unverified)/.test(message)
+    ) {
+      return "Please verify your email before continuing.";
+    }
+    if (
+      status === 429 ||
+      /too many attempts|rate limit|temporarily limiting|security purposes/.test(
+        message,
+      )
+    ) {
+      return "Too many attempts. Please wait a moment before trying again.";
+    }
+    if (
+      code === "otp_expired" ||
+      (!/invalid\b.{0,24}\bor\b.{0,12}\bexpired/.test(message) &&
+        /(?:verification )?code has expired|otp expired|expired verification code/.test(
+          message,
+        ))
+    ) {
+      return "Verification code has expired. Request a new code.";
+    }
+    if (status >= 500 || /temporarily unavailable|couldn't verify/.test(message)) {
+      return "We couldn't verify your email. Please check your connection and try again.";
+    }
+    return "Incorrect verification code. Please check the code and try again.";
   }
 
   function getAdminGreeting(date = new Date()) {
@@ -542,6 +662,14 @@
   }
 
   async function handleGoogleCredential(response) {
+    if (
+      !response?.credential ||
+      response.error === "popup_closed_by_user" ||
+      response.error === "access_denied"
+    ) {
+      showAuthMessage("Google sign-in was cancelled.", "warning");
+      return;
+    }
     showAuthMessage();
     try {
       const result = await fetch("/api/auth/google", {
@@ -550,16 +678,30 @@
         body: JSON.stringify({ credential: response.credential }),
       });
       const data = await result.json();
-      if (!result.ok) throw new Error(data.error || "Google sign-in failed.");
+      if (!result.ok) {
+        showAuthMessage(
+          getAuthFeedbackMessage("google", {
+            status: result.status,
+            code: data.code,
+            message: data.error,
+          }),
+        );
+        return;
+      }
       currentSessionUser = data.user || null;
       renderAuthenticatedUser(data.user);
       if (isLoginPath) {
-        window.location.assign(
-          hasAnyAdminPermission(data.user) ? "/admin" : "/estimate",
+        showToast("Google sign-in successful. Redirecting...", "success");
+        window.setTimeout(
+          () =>
+            window.location.assign(
+              hasAnyAdminPermission(data.user) ? "/admin" : "/estimate",
+            ),
+          1100,
         );
       }
-    } catch (error) {
-      showAuthMessage(error.message);
+    } catch {
+      showAuthMessage("Google sign-in failed. Please try again.");
     }
   }
 
@@ -747,6 +889,7 @@
     loginSubmitButton.disabled = true;
     loginSubmitButton.textContent =
       loginMode === "signup" ? "Creating account..." : "Signing in...";
+    const authContext = loginMode;
 
     const payload = {
       email: formData.get("email"),
@@ -776,30 +919,25 @@
       );
       const data = await response.json();
       if (!response.ok) {
-        const errorMessage = data.error || "Authentication failed.";
-        if (
-          loginMode === "signin" &&
-          /invalid login credentials|invalid credentials|please check your email and password/i.test(
-            errorMessage,
-          )
-        ) {
-          throw new Error("Incorrect email or password.");
-        }
-        if (
-          loginMode === "signup" &&
-          /already exists|account with this email|email already/i.test(
-            errorMessage,
-          )
-        ) {
-          throw new Error("An account with this email already exists.");
-        }
-        throw new Error(errorMessage);
+        showAuthMessage(
+          getAuthFeedbackMessage(authContext, {
+            status: response.status,
+            code: data.code,
+            message: data.error,
+          }),
+        );
+        return;
       }
       if (data.user) {
         currentSessionUser = data.user;
         renderAuthenticatedUser(data.user);
-        window.location.assign(
-          hasAnyAdminPermission(data.user) ? "/admin" : "/estimate",
+        showToast("Welcome back! Redirecting...", "success");
+        window.setTimeout(
+          () =>
+            window.location.assign(
+              hasAnyAdminPermission(data.user) ? "/admin" : "/estimate",
+            ),
+          1100,
         );
         return;
       }
@@ -809,10 +947,8 @@
           .trim()
           .toLowerCase(),
       );
-    } catch (error) {
-      showAuthMessage(
-        error.message || "Authentication failed. Please try again.",
-      );
+    } catch {
+      showAuthMessage(getAuthFeedbackMessage(authContext));
     } finally {
       loginSubmitButton.disabled = false;
       if (!pendingEmailConfirmation) {
@@ -826,12 +962,32 @@
       const hashParams = new URLSearchParams(window.location.hash.slice(1));
       const authError = hashParams.get("error");
       const authErrorCode = hashParams.get("error_code");
+      const loginParams = new URLSearchParams(window.location.search);
+      const restoredStatus = isLoginPath && loginParams.get("status") === "restored";
+      const suspendedStatus = isLoginPath && loginParams.get("status") === "suspended";
+      if (restoredStatus || suspendedStatus) {
+        loginParams.delete("status");
+        window.history.replaceState(
+          {},
+          document.title,
+          `${window.location.pathname}${loginParams.toString() ? `?${loginParams}` : ""}${window.location.hash}`,
+        );
+      }
       if (authError || authErrorCode) {
-        const confirmationMessage =
-          authErrorCode === "otp_expired" || authError === "access_denied"
-            ? "This confirmation link is invalid or has expired. Request a new confirmation email and try again."
-            : "Email confirmation could not be completed. Request a new confirmation email and try again.";
-        showAuthMessage(confirmationMessage);
+        if (
+          authError === "access_denied" ||
+          authErrorCode === "access_denied" ||
+          authError === "popup_closed_by_user"
+        ) {
+          showAuthMessage("Google sign-in was cancelled.", "warning");
+        } else if (authErrorCode === "otp_expired") {
+          showAuthMessage(
+            "This confirmation link has expired. Request a new confirmation email and try again.",
+            "error",
+          );
+        } else {
+          showAuthMessage("Google sign-in failed. Please try again.", "error");
+        }
         window.history.replaceState(
           {},
           document.title,
@@ -846,6 +1002,16 @@
         cache: "no-store",
       });
       const session = await sessionResponse.json();
+      const suspendedAccount =
+        sessionResponse.status === 403 ||
+        session.code === "ACCOUNT_SUSPENDED";
+      if (
+        suspendedAccount &&
+        (isEstimatePath || isAdminPath)
+      ) {
+        window.location.assign("/login?status=suspended");
+        return;
+      }
       if (session.user) {
         currentSessionUser = session.user;
         renderAuthenticatedUser(session.user);
@@ -870,6 +1036,18 @@
         return;
       }
       if (!isLoginPath) return;
+      if (suspendedAccount || suspendedStatus) {
+        showAuthMessage(
+          "Your account has been suspended. Please contact support.",
+          "error",
+        );
+      }
+      if (restoredStatus) {
+        showAuthMessage(
+          "Your account has been restored. You can now sign in.",
+          "success",
+        );
+      }
 
       passwordAuthEnabled = Boolean(config.passwordEnabled);
       setLoginMode(new URLSearchParams(window.location.search).get("mode"));
@@ -893,6 +1071,7 @@
         if (!loginOtpInput) return;
         const digits = loginOtpInput.value.replace(/\D/g, "").slice(0, 6);
         loginOtpInput.value = digits;
+        if (loginOtpStatus && !loginOtpStatus.hidden) updateOtpStatus();
       });
       loginOtpInput?.addEventListener("paste", (event) => {
         const pasted =
@@ -913,13 +1092,16 @@
         );
         if (verificationWait > 0) {
           updateOtpStatus(
-            `Please wait ${verificationWait}s before trying the code again.`,
-            "error",
+            "Too many attempts. Please wait a moment before trying again.",
+            "warning",
           );
           return;
         }
         if (isAuthSubmitCoolingDown()) {
-          updateOtpStatus("Please wait a moment before trying again.", "error");
+          updateOtpStatus(
+            "Too many attempts. Please wait a moment before trying again.",
+            "warning",
+          );
           return;
         }
         const token = loginOtpInput?.value.trim() || "";
@@ -945,35 +1127,32 @@
                 Number(data.retryAfterSeconds) || OTP_RESEND_COOLDOWN_SECONDS,
               );
             }
-            const errorMessage = data.error || "Email verification failed.";
-            if (/expired|otp_expired/i.test(errorMessage)) {
-              throw new Error(
-                "That verification code has expired. Request a new one.",
-              );
+            updateOtpStatus(
+              getOtpFeedbackMessage(data, response.status),
+              "error",
+            );
+            if (
+              response.status === 429 &&
+              otpVerifyCooldownUntil <= Date.now()
+            ) {
+              setOtpVerifyCooldown(OTP_RESEND_COOLDOWN_SECONDS);
             }
-            if (/invalid|not accepted|incorrect/i.test(errorMessage)) {
-              throw new Error("Invalid verification code. Try again.");
-            }
-            throw new Error(errorMessage);
+            return;
           }
           currentSessionUser = data.user;
           renderAuthenticatedUser(data.user);
-          updateOtpStatus("Email verified.", "success");
+          updateOtpStatus();
+          showToast("Email verified. Redirecting...", "success");
           window.setTimeout(() => {
             window.location.assign(
               hasAnyAdminPermission(data.user) ? "/admin" : "/estimate",
             );
-          }, 700);
-        } catch (error) {
-          updateOtpStatus(error.message || "Verification failed.", "error");
-          if (
-            /too many|rate limit|temporarily limiting|security purposes/i.test(
-              error.message,
-            ) &&
-            otpVerifyCooldownUntil <= Date.now()
-          ) {
-            setOtpVerifyCooldown(OTP_RESEND_COOLDOWN_SECONDS);
-          }
+          }, 1100);
+        } catch {
+          updateOtpStatus(
+            "We couldn't verify your email. Please check your connection and try again.",
+            "error",
+          );
         } finally {
           otpVerifyInFlight = false;
           updateOtpVerifyUi();
@@ -981,21 +1160,23 @@
       });
       loginOtpBack?.addEventListener("click", hideEmailOtp);
       loginOtpResend?.addEventListener("click", async () => {
-        if (!pendingEmailConfirmation) return;
+        if (!pendingEmailConfirmation || otpResendInFlight) return;
         const remaining = Math.max(
           0,
           Math.ceil((otpResendCooldownUntil - Date.now()) / 1000),
         );
         if (remaining > 0) {
           updateOtpStatus(
-            `Please wait ${remaining}s before requesting a new code.`,
-            "error",
+            "Please wait before requesting another code.",
+            "warning",
           );
           return;
         }
-        setOtpResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
-        updateOtpStatus("Sending a new verification code…", "success");
+        otpResendInFlight = true;
+        updateOtpResendUi();
+        updateOtpStatus();
         let retryAfterSeconds = 0;
+        let rateLimited = false;
         try {
           const response = await fetch("/api/auth/resend-otp", {
             method: "POST",
@@ -1005,24 +1186,49 @@
           const data = await response.json();
           retryAfterSeconds = Number(data.retryAfterSeconds) || 0;
           if (!response.ok) {
-            throw new Error(
-              data.error || "A new verification code could not be sent.",
-            );
+            rateLimited =
+              response.status === 429 ||
+              /too many|rate limit|temporarily limiting|security purposes/i.test(
+                String(data.error || ""),
+              );
+            if (rateLimited) {
+              updateOtpStatus(
+                "Please wait before requesting another code.",
+                "warning",
+              );
+              setOtpResendCooldown(
+                retryAfterSeconds || OTP_RESEND_COOLDOWN_SECONDS,
+              );
+            } else {
+              updateOtpStatus(
+                "Couldn't resend the code. Please try again.",
+                "error",
+              );
+            }
+            return;
           }
-          updateOtpStatus("New code sent.", "success");
+          setOtpResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+          showToast(
+            "New verification code sent to your email.",
+            "success",
+          );
           if (loginOtpInput) {
             loginOtpInput.value = "";
             loginOtpInput.focus();
           }
-        } catch (error) {
-          updateOtpStatus(error.message, "error");
-          setOtpResendCooldown(
-            retryAfterSeconds
-              ? retryAfterSeconds
-              : /too many|rate limit|temporarily limiting/i.test(error.message)
-                ? OTP_RESEND_COOLDOWN_SECONDS
-                : 0,
+        } catch {
+          updateOtpStatus(
+            "Couldn't resend the code. Please try again.",
+            "error",
           );
+          if (rateLimited) {
+            setOtpResendCooldown(
+              retryAfterSeconds || OTP_RESEND_COOLDOWN_SECONDS,
+            );
+          }
+        } finally {
+          otpResendInFlight = false;
+          updateOtpResendUi();
         }
       });
       if (loginOtpResend) {
@@ -1056,17 +1262,24 @@
           auto_select: false,
         });
         if (loginGoogleButton) {
+          let renderedGoogleButtonWidth = 0;
           const renderGoogleButton = () => {
+            const buttonWidth = Math.min(
+              400,
+              Math.floor(loginGoogleButton.getBoundingClientRect().width),
+            );
+            if (!buttonWidth || buttonWidth === renderedGoogleButtonWidth) {
+              return;
+            }
+            renderedGoogleButtonWidth = buttonWidth;
             loginGoogleButton.replaceChildren();
             window.google.accounts.id.renderButton(loginGoogleButton, {
-              theme:
-                document.documentElement.getAttribute("data-theme") === "light"
-                  ? "outline"
-                  : "filled_black",
+              theme: "outline",
+              width: buttonWidth,
               size: "large",
               text: "continue_with",
-              shape: "rectangular",
-              logo_alignment: "center",
+              shape: "pill",
+              logo_alignment: "left",
             });
             const generatedIcon = loginGoogleButton.querySelector(
               '[role="button"] svg',
@@ -1080,8 +1293,13 @@
               generatedIcon.replaceWith(assetIcon);
             }
           };
+          const renderGoogleButtonForTheme = () => {
+            renderedGoogleButtonWidth = 0;
+            renderGoogleButton();
+          };
           renderGoogleButton();
-          new MutationObserver(renderGoogleButton).observe(
+          window.addEventListener("resize", renderGoogleButton);
+          new MutationObserver(renderGoogleButtonForTheme).observe(
             document.documentElement,
             { attributes: true, attributeFilter: ["data-theme"] },
           );
@@ -1094,7 +1312,11 @@
       }
     } catch (error) {
       renderAuthenticatedUser(null);
-      showAuthMessage(error.message);
+      showAuthMessage(
+        isLoginPath
+          ? "We couldn't sign you in. Please check your connection and try again."
+          : "Authentication services are temporarily unavailable. Please try again.",
+      );
     }
   }
 
@@ -1539,8 +1761,10 @@
       setupTelemetryControls();
     } catch (error) {
       adminSourceBadge.textContent = "Unavailable";
-      adminMessage.textContent = error.message;
-      adminMessage.hidden = false;
+      showToast(
+        error.message || "The admin dashboard could not be loaded.",
+        "error",
+      );
     }
   }
 
@@ -2118,7 +2342,7 @@
 
   function showToast(message, type = "info", duration = 4000) {
     const container = document.getElementById("toast-container");
-    if (!container) return;
+    if (!container || !message) return;
 
     const validTypes = ["success", "error", "warning", "info"];
     const toastType = validTypes.includes(type) ? type : "info";
@@ -2137,7 +2361,11 @@
     toast.innerHTML = `
       <div class="toast-icon-wrap">${icons[toastType]}</div>
       <div class="toast-content">${escapeHtml(message)}</div>
-      <button class="toast-close-btn" type="button" aria-label="Dismiss notification">&times;</button>
+      <button class="toast-close-btn" type="button" aria-label="Dismiss notification">
+        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <path d="m5 5 10 10M15 5 5 15"></path>
+        </svg>
+      </button>
     `;
 
     container.appendChild(toast);
@@ -2146,8 +2374,12 @@
     toast.classList.add("is-visible");
 
     let timer = null;
+    let dismissed = false;
 
     function dismiss() {
+      if (dismissed) return;
+      dismissed = true;
+      if (timer) clearTimeout(timer);
       toast.classList.remove("is-visible");
       toast.classList.add("is-leaving");
       setTimeout(() => {
@@ -2167,12 +2399,17 @@
       });
     }
 
-    toast.addEventListener("mouseenter", () => {
+    const pauseDismissal = () => {
       if (timer) clearTimeout(timer);
-    });
-    toast.addEventListener("mouseleave", () => {
-      if (duration > 0) timer = setTimeout(dismiss, duration);
-    });
+    };
+    const resumeDismissal = (event) => {
+      if (event?.relatedTarget && toast.contains(event.relatedTarget)) return;
+      if (!dismissed && duration > 0) timer = setTimeout(dismiss, duration);
+    };
+    toast.addEventListener("mouseenter", pauseDismissal);
+    toast.addEventListener("mouseleave", resumeDismissal);
+    toast.addEventListener("focusin", pauseDismissal);
+    toast.addEventListener("focusout", resumeDismissal);
   }
 
   async function loadAdminTelemetry() {
@@ -2532,7 +2769,7 @@
           telemetryLogsCache = [];
           renderTelemetryLogs();
         } catch (err) {
-          alert(err.message || "Failed to clear audit logs.");
+          showToast(err.message || "Failed to clear audit logs.", "error");
         } finally {
           clearBtn.disabled = false;
         }
@@ -2684,8 +2921,7 @@
       adminNotifications = [];
       renderFeedbackDrawer([]);
     } catch (error) {
-      adminMessage.textContent = error.message;
-      adminMessage.hidden = false;
+      showToast(error.message || "Notifications could not be cleared.", "error");
     } finally {
       adminDrawerClear.disabled = false;
     }
@@ -2726,8 +2962,7 @@
       }
       await loadAdminDashboard();
     } catch (error) {
-      adminMessage.textContent = error.message;
-      adminMessage.hidden = false;
+      showToast(error.message || "Pricing metrics could not be reset.", "error");
     } finally {
       adminResetBtn.disabled = false;
     }
@@ -3257,7 +3492,10 @@
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      window.alert("Couldn't generate the estimate. Please try again.");
+      showToast(
+        err.message || "Couldn't generate the estimate. Please try again.",
+        "error",
+      );
     } finally {
       downloadBtn.textContent = original;
       downloadBtn.disabled = false;
@@ -3310,7 +3548,10 @@
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      window.alert("Couldn't generate the invoice. Please try again.");
+      showToast(
+        err.message || "Couldn't generate the invoice. Please try again.",
+        "error",
+      );
     } finally {
       invoiceDownloadBtn.disabled = false;
       invoiceDownloadBtn.textContent = "Download Invoice PDF";
@@ -3527,13 +3768,15 @@
           }),
         });
         if (!response.ok) throw new Error("Feedback could not be saved.");
-        feedbackMessage.textContent =
-          "Thanks. Your feedback will help improve future estimates.";
-        feedbackMessage.hidden = false;
+        showToast(
+          "Thanks. Your feedback will help improve future estimates.",
+          "success",
+        );
+        feedbackMessage.hidden = true;
+        feedbackMessage.textContent = "";
         feedbackForm.reset();
       } catch (error) {
-        feedbackMessage.textContent = error.message;
-        feedbackMessage.hidden = false;
+        showToast(error.message || "Feedback could not be saved.", "error");
       } finally {
         submitButton.disabled = false;
       }

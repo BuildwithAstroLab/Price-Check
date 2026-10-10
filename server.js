@@ -453,9 +453,11 @@ function getSafeAuthError(error, context) {
     }
     if (
       code === "otp_expired" ||
-      message.includes("otp expired") ||
-      message.includes("has expired") ||
-      /expired.*verification|verification.*expired/i.test(message)
+      (code !== "invalid_otp" &&
+        !/invalid\s+or\s+(?:has\s+)?expired/i.test(message) &&
+        (message.includes("otp expired") ||
+          message.includes("has expired") ||
+          /expired.*verification|verification.*expired/i.test(message)))
     ) {
       return {
         status: 400,

@@ -85,47 +85,22 @@
               Sign out
             </button>
           </div>
-          <button
-            class="theme-toggle-btn"
-            id="theme-toggle-btn"
-            type="button"
-            aria-label="Switch appearance mode"
-            title="Switch appearance mode (Classy Light / Premium Dark)"
-          >
-            <svg
-              class="theme-icon-sun"
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
+          <div class="public-theme-toggle-wrap">
+            <button
+              class="theme-toggle-btn"
+              id="theme-toggle-btn"
+              type="button"
+              role="switch"
+              aria-label="Dark mode"
+              aria-checked="false"
+              title="Dark mode"
             >
-              <circle cx="12" cy="12" r="4"></circle>
-              <path
-                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
-              ></path>
-            </svg>
-            <svg
-              class="theme-icon-moon"
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
-            </svg>
-          </button>
+              <span class="theme-toggle-label">Dark mode</span>
+              <span class="theme-toggle-switch" aria-hidden="true">
+                <span class="theme-toggle-thumb"></span>
+              </span>
+            </button>
+          </div>
           <p class="auth-message" id="auth-message" role="alert" hidden></p>
         </div>
       </div>
@@ -435,6 +410,7 @@
             id="login-auth-message"
             role="status"
             aria-live="polite"
+            aria-atomic="true"
             hidden
           ></p>
           <form class="login-form login-otp-form" id="login-otp-form" hidden>
@@ -468,7 +444,10 @@
             <p
               class="login-otp-status"
               id="login-otp-status"
+              role="status"
               aria-live="polite"
+              aria-atomic="true"
+              hidden
             ></p>
             <p class="login-otp-resend-copy">
               Didn't receive it?

@@ -2,6 +2,18 @@
   "use strict";
 
   const STORAGE_KEY = "pricecheck_theme";
+  let themeToggleWrap = null;
+  let themeTogglePlaceholder = null;
+  const mobileNavigation = window.matchMedia("(max-width: 767px)");
+
+  function placeThemeToggle(menu) {
+    if (!themeToggleWrap || !themeTogglePlaceholder) return;
+    if (mobileNavigation.matches && menu) {
+      menu.appendChild(themeToggleWrap);
+    } else {
+      themeTogglePlaceholder.after(themeToggleWrap);
+    }
+  }
 
   function getPreferredTheme() {
     try {
@@ -27,14 +39,9 @@
     if (!toggle) return;
 
     const isLight = theme === "light";
-    toggle.setAttribute("aria-pressed", String(isLight));
-    toggle.setAttribute(
-      "aria-label",
-      isLight ? "Switch to premium dark mode" : "Switch to classy light mode",
-    );
-    toggle.title = isLight
-      ? "Switch to premium dark mode"
-      : "Switch to classy light mode";
+    toggle.setAttribute("aria-checked", String(!isLight));
+    toggle.setAttribute("aria-label", "Dark mode");
+    toggle.title = "Dark mode";
   }
 
   function updateTheme(theme) {
@@ -47,6 +54,18 @@
   function wireThemeToggle() {
     const existing = document.getElementById("theme-toggle-btn");
     if (existing) {
+      themeToggleWrap = existing.closest(".public-theme-toggle-wrap");
+      const menu = document.querySelector("[data-public-menu]");
+      if (themeToggleWrap && menu) {
+        themeTogglePlaceholder = document.createComment(
+          "Theme toggle desktop position",
+        );
+        themeToggleWrap.before(themeTogglePlaceholder);
+        placeThemeToggle(menu);
+        mobileNavigation.addEventListener("change", () =>
+          placeThemeToggle(menu),
+        );
+      }
       existing.addEventListener("click", () => {
         const nextTheme =
           document.documentElement.getAttribute("data-theme") === "light"
@@ -67,17 +86,15 @@
     button.id = "theme-toggle-btn";
     button.type = "button";
     button.className = "theme-toggle-btn";
-    button.setAttribute("aria-label", "Switch appearance mode");
-    button.setAttribute("aria-pressed", "false");
-    button.title = "Switch appearance mode";
+    button.setAttribute("role", "switch");
+    button.setAttribute("aria-label", "Dark mode");
+    button.setAttribute("aria-checked", "false");
+    button.title = "Dark mode";
     button.innerHTML = `
-      <svg class="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="4"></circle>
-        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-      </svg>
-      <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
-      </svg>
+      <span class="theme-toggle-label">Dark mode</span>
+      <span class="theme-toggle-switch" aria-hidden="true">
+        <span class="theme-toggle-thumb"></span>
+      </span>
     `;
 
     button.addEventListener("click", () => {
@@ -205,6 +222,7 @@
     });
     account.appendChild(signout);
     nav.appendChild(account);
+    placeThemeToggle(nav);
     header.classList.add("is-authenticated");
     window.PriceCheckNavbar?.updateActive();
   }
@@ -224,6 +242,7 @@
       "btn nav-public-cta",
       "get-started",
     );
+    placeThemeToggle(nav);
     header.classList.remove("is-authenticated");
     window.PriceCheckNavbar?.updateActive();
   }

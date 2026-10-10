@@ -90,14 +90,9 @@
 
     const isLight =
       document.documentElement.getAttribute("data-theme") === "light";
-    toggleBtn.setAttribute("aria-pressed", String(isLight));
-    toggleBtn.setAttribute(
-      "aria-label",
-      isLight ? "Switch to premium dark mode" : "Switch to classy light mode",
-    );
-    toggleBtn.title = isLight
-      ? "Switch to premium dark mode"
-      : "Switch to classy light mode";
+    toggleBtn.setAttribute("aria-checked", String(!isLight));
+    toggleBtn.setAttribute("aria-label", "Dark mode");
+    toggleBtn.title = "Dark mode";
   }
 
   function initThemeToggle() {

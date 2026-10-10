@@ -1458,6 +1458,39 @@ test("verification rate limit takes precedence over invalid OTP messaging", asyn
   }
 });
 
+test("invalid OTP wording is not classified as an expired verification code", async () => {
+  supabaseAuthUsers.set("wrong-otp@example.com", {
+    user: {
+      id: "wrong-otp-user",
+      email: "wrong-otp@example.com",
+      identities: [{ provider: "email" }],
+    },
+    passwordSalt: "",
+    passwordHash: "",
+  });
+  supabaseAuthResponse = {
+    status: 400,
+    body: {
+      code: "invalid_otp",
+      msg: "Email link is invalid or has expired",
+    },
+  };
+  try {
+    const response = await post("/api/auth/verify-email", {
+      email: "wrong-otp@example.com",
+      token: "123456",
+    });
+    const payload = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(payload.error, /was not accepted/i);
+    assert.doesNotMatch(payload.error, /expired/i);
+  } finally {
+    supabaseAuthResponse = null;
+    supabaseAuthUsers.delete("wrong-otp@example.com");
+  }
+});
+
 test("signup contains no custom OTP generation and uses Supabase verification", () => {
   const source = fs.readFileSync(
     path.join(__dirname, "..", "server.js"),
