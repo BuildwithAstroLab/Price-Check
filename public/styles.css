@@ -3963,6 +3963,51 @@ textarea:focus {
   color: transparent;
 }
 
+.final-quote-control {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.final-quote-value {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.final-price-form {
+  width: min(100%, 280px);
+  margin-top: 8px;
+  text-align: left;
+}
+
+.final-price-form label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.final-price-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.final-price-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .quote-range-value {
   font-family: var(--font-display);
   font-size: 1.6rem;

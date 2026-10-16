@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const zlib = require("node:zlib");
 const { once } = require("node:events");
 const { OAuth2Client } = require("google-auth-library");
 
@@ -243,12 +244,16 @@ global.fetch = async (input, init = {}) => {
     }
     if (rpcName === "update_user_role_with_notifications") {
       const target = roleTestDatabase.users.get(String(args.p_user_id));
-      if (!target) return respond({ message: "The target user does not exist." }, 404);
+      if (!target)
+        return respond({ message: "The target user does not exist." }, 404);
       const previousRole =
         roleTestDatabase.userRoles.get(String(args.p_user_id))?.role ||
         "Standard User";
       if (previousRole !== args.p_expected_previous_role) {
-        return respond({ code: "40001", message: "Role changed concurrently." }, 409);
+        return respond(
+          { code: "40001", message: "Role changed concurrently." },
+          409,
+        );
       }
       if (previousRole === args.p_role) {
         return respond({
@@ -281,13 +286,16 @@ global.fetch = async (input, init = {}) => {
             adminId !== String(args.p_user_id) &&
             ["Owner", "Super Admin"].includes(adminRole.role)
           ) {
-            addEvent(`privileged-role:${args.p_user_id}:${args.p_role}:${adminId}`, {
-              user_id: String(adminId),
-              email_type: "privileged_role_change",
-              event_key: `privileged-role:${args.p_user_id}:${args.p_role}:${adminId}`,
-              recipient_email: admin.email,
-              payload: args.p_admin_payload,
-            });
+            addEvent(
+              `privileged-role:${args.p_user_id}:${args.p_role}:${adminId}`,
+              {
+                user_id: String(adminId),
+                email_type: "privileged_role_change",
+                event_key: `privileged-role:${args.p_user_id}:${args.p_role}:${adminId}`,
+                recipient_email: admin.email,
+                payload: args.p_admin_payload,
+              },
+            );
           }
         }
       }
@@ -321,7 +329,8 @@ global.fetch = async (input, init = {}) => {
     }
     if (rpcName === "set_user_suspension_with_notification") {
       const user = roleTestDatabase.users.get(String(args.p_user_id));
-      if (!user) return respond({ message: "The target user does not exist." }, 404);
+      if (!user)
+        return respond({ message: "The target user does not exist." }, 404);
       const accountStatus = args.p_suspended ? "suspended" : "active";
       if (user.account_status === accountStatus) {
         return respond({ changed: false, account_status: accountStatus });
@@ -379,8 +388,7 @@ global.fetch = async (input, init = {}) => {
     const payload = JSON.parse(init.body || "{}");
     const records = Array.isArray(payload) ? payload : [payload];
     const saved = records.map((record) => {
-      const key =
-        record.event_key || `${record.user_id}:${record.email_type}`;
+      const key = record.event_key || `${record.user_id}:${record.email_type}`;
       const row = { ...roleTestDatabase.emailEvents.get(key), ...record };
       roleTestDatabase.emailEvents.set(key, row);
       return row;
@@ -406,6 +414,42 @@ global.fetch = async (input, init = {}) => {
       });
     }
     return respond([], 201);
+  }
+  if (method === "POST" && table === "user_estimates") {
+    const payload = JSON.parse(init.body || "{}");
+    const records = Array.isArray(payload) ? payload : [payload];
+    const saved = records.map((record) => {
+      const row = {
+        id: 8000 + roleTestDatabase.estimates.length,
+        created_at: new Date().toISOString(),
+        ...record,
+      };
+      roleTestDatabase.estimates.push(row);
+      return row;
+    });
+    return respond(
+      getHeader("Accept").includes("vnd.pgrst.object")
+        ? saved[0] || null
+        : saved,
+      201,
+    );
+  }
+  if (method === "PATCH" && table === "user_estimates") {
+    const payload = JSON.parse(init.body || "{}");
+    const ids = filterValues("id");
+    const userIds = filterValues("user_id");
+    const updated = roleTestDatabase.estimates
+      .filter(
+        (row) =>
+          ids.includes(String(row.id)) &&
+          userIds.includes(String(row.user_id)),
+      )
+      .map((row) => Object.assign(row, payload));
+    return respond(
+      getHeader("Accept").includes("vnd.pgrst.object")
+        ? updated[0] || null
+        : updated,
+    );
   }
   if (
     method === "DELETE" &&
@@ -440,7 +484,8 @@ global.fetch = async (input, init = {}) => {
     if (table === "email_events") {
       for (const id of userIds) {
         for (const [key, row] of roleTestDatabase.emailEvents) {
-          if (String(row.user_id) === id) roleTestDatabase.emailEvents.delete(key);
+          if (String(row.user_id) === id)
+            roleTestDatabase.emailEvents.delete(key);
         }
       }
     }
@@ -554,10 +599,15 @@ global.fetch = async (input, init = {}) => {
         if (userIds.length)
           rows = rows.filter((row) => userIds.includes(String(row.user_id)));
         if (emailTypes.length)
-          rows = rows.filter((row) => emailTypes.includes(String(row.email_type)));
-        if (requestUrl.searchParams.get("limit") === "1") rows = rows.slice(0, 1);
+          rows = rows.filter((row) =>
+            emailTypes.includes(String(row.email_type)),
+          );
+        if (requestUrl.searchParams.get("limit") === "1")
+          rows = rows.slice(0, 1);
         return respond(
-          getHeader("Accept").includes("vnd.pgrst.object") ? rows[0] || null : rows,
+          getHeader("Accept").includes("vnd.pgrst.object")
+            ? rows[0] || null
+            : rows,
         );
       }
     }
@@ -594,6 +644,7 @@ const {
   verifyGoogleCredential,
   createSession,
   sessionCookie,
+  getGoogleAuthFailureMessage,
 } = require("../lib/auth");
 
 let server;
@@ -637,6 +688,16 @@ test("Google sign-in captures profile data needed for future email outreach", as
   } finally {
     OAuth2Client.prototype.verifyIdToken = originalVerify;
   }
+});
+
+test("Google OAuth origin mismatch gives actionable guidance", () => {
+  const message = getGoogleAuthFailureMessage(
+    new Error("The given origin is not allowed for the given client ID."),
+    "http://localhost:3001",
+  );
+
+  assert.match(message, /Authorized JavaScript origins/i);
+  assert.match(message, /http:\/\/localhost:3001/i);
 });
 
 test("saveUser stores profile rows in a sheet-compatible CSV file", async () => {
@@ -2051,10 +2112,12 @@ test("PDF endpoint returns a downloadable PDF for the visible estimate data", as
       recommendedQuote: 179000,
       fairRange: { min: 143000, max: 215000 },
     },
+    final_price: 200000,
+    sourceDescription: "Photograph and deliver a client event gallery.",
     advice: {
-      reasons: ["3 hours of shooting"],
-      advice: "Present the quote with a clear scope.",
-      negotiationTip: "Adjust scope before reducing price.",
+      reasons: ["INTERNAL RECOMMENDATION DETAILS"],
+      advice: "INTERNAL PRICING ADVICE",
+      negotiationTip: "INTERNAL NEGOTIATION TIP",
     },
   };
   const response = await post("/api/pricecheck/pdf", estimate);
@@ -2068,6 +2131,39 @@ test("PDF endpoint returns a downloadable PDF for the visible estimate data", as
   );
   assert.deepEqual(body.subarray(0, 4), Buffer.from("%PDF"));
   assert.ok(body.length > 1000);
+
+  const pdfSource = body.toString("latin1");
+  const extracted = [];
+  let streamIndex = 0;
+  while ((streamIndex = pdfSource.indexOf("stream", streamIndex)) >= 0) {
+    let streamStart = streamIndex + "stream".length;
+    if (pdfSource[streamStart] === "\r") streamStart += 1;
+    if (pdfSource[streamStart] === "\n") streamStart += 1;
+    const streamEnd = pdfSource.indexOf("endstream", streamStart);
+    if (streamEnd < 0) break;
+    let streamStop = streamEnd;
+    if (pdfSource[streamStop - 1] === "\n") streamStop -= 1;
+    if (pdfSource[streamStop - 1] === "\r") streamStop -= 1;
+    try {
+      const content = zlib
+        .inflateSync(body.subarray(streamStart, streamStop))
+        .toString("latin1");
+      for (const match of content.matchAll(/<([\da-f]+)>/gi)) {
+        extracted.push(Buffer.from(match[1], "hex").toString("latin1"));
+      }
+    } catch {
+      // Ignore uncompressed PDF streams such as font metadata.
+    }
+    streamIndex = streamEnd + "endstream".length;
+  }
+  const pdfText = extracted.join(" ");
+  const compactPdfText = pdfText.replace(/[\s.]/g, "");
+  assert.match(pdfText, /200,000/);
+  assert.match(compactPdfText, /Photographanddeliveraclienteventgallery/);
+  assert.doesNotMatch(pdfText, /INTERNAL RECOMMENDATION DETAILS/);
+  assert.doesNotMatch(pdfText, /INTERNAL PRICING ADVICE/);
+  assert.doesNotMatch(pdfText, /INTERNAL NEGOTIATION TIP/);
+  assert.doesNotMatch(pdfText, /179,000/);
 });
 
 test("invoice endpoint returns a downloadable invoice PDF", async () => {
@@ -2183,6 +2279,105 @@ test("account profile requires a valid email and stores newsletter consent", asy
   assert.equal(payload.user.newsletterConsent, true);
   assert.equal(payload.user.role, "Analyst");
   assert.equal(roleTestDatabase.userRoles.get(user.id)?.role, "Analyst");
+});
+
+test("final quote updates are authenticated, scoped to their owner, and listed with legacy fallback", async () => {
+  const owner = {
+    id: "final-price-owner",
+    email: "quote-owner@example.com",
+    name: "Quote Owner",
+    isAdmin: false,
+  };
+  seedRoleUser(owner, "Standard User");
+  const estimate = {
+    id: 9851,
+    user_id: owner.id,
+    result: {
+      project: { projectType: "Landing page", deliverables: [] },
+      pricing: { category: "Web design", recommendedQuote: 220000 },
+      advice: { advice: "Internal pricing advice stays in the result." },
+    },
+    final_price: 220000,
+    source_description: "Build a landing page for a new product.",
+    source_deliverables: "",
+    created_at: new Date().toISOString(),
+  };
+  const legacyEstimate = {
+    ...estimate,
+    id: 9852,
+    final_price: null,
+  };
+  const otherEstimate = {
+    ...estimate,
+    id: 9853,
+    user_id: "another-user",
+    final_price: null,
+  };
+  roleTestDatabase.estimates.push(estimate, legacyEstimate, otherEstimate);
+  const cookie = `pricecheck_session=${createSession(owner)}`;
+
+  const unauthenticated = await fetch(
+    `${baseUrl}/api/account/estimates/9851/final-price`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ final_price: 200000 }),
+    },
+  );
+  assert.equal(unauthenticated.status, 401);
+
+  const invalid = await fetch(
+    `${baseUrl}/api/account/estimates/9851/final-price`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+      },
+      body: JSON.stringify({ final_price: -10 }),
+    },
+  );
+  assert.equal(invalid.status, 400);
+
+  const updated = await fetch(
+    `${baseUrl}/api/account/estimates/9851/final-price`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+      },
+      body: JSON.stringify({ final_price: 200000 }),
+    },
+  );
+  assert.equal(updated.status, 200);
+  assert.deepEqual(await updated.json(), { id: "9851", final_price: 200000 });
+  assert.equal(estimate.result.pricing.recommendedQuote, 220000);
+
+  const crossUser = await fetch(
+    `${baseUrl}/api/account/estimates/9853/final-price`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+      },
+      body: JSON.stringify({ final_price: 150000 }),
+    },
+  );
+  assert.equal(crossUser.status, 404);
+  assert.equal(otherEstimate.final_price, null);
+
+  const history = await fetch(`${baseUrl}/api/account/estimates`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(history.status, 200);
+  const { estimates } = await history.json();
+  const saved = estimates.find((item) => item.id === "9851");
+  const legacy = estimates.find((item) => item.id === "9852");
+  assert.equal(saved.result.final_price, 200000);
+  assert.equal(saved.result.pricing.recommendedQuote, 220000);
+  assert.equal(legacy.result.final_price, 220000);
 });
 
 // Phase 12 — Comprehensive Admin & System Test Suite
@@ -2508,7 +2703,8 @@ test("marketing campaigns target opted-in users and support confirmed unsubscrib
   assert.ok(event);
   assert.equal(
     [...roleTestDatabase.emailEvents.values()].some(
-      (entry) => entry.event_key === `marketing:${campaignId}:${optedOutUser.id}`,
+      (entry) =>
+        entry.event_key === `marketing:${campaignId}:${optedOutUser.id}`,
     ),
     false,
   );
@@ -2527,7 +2723,10 @@ test("marketing campaigns target opted-in users and support confirmed unsubscrib
     body: new URLSearchParams({ token }),
   });
   assert.equal(unsubscribed.status, 200);
-  assert.equal(roleTestDatabase.users.get(optedInUser.id).newsletter_consent, false);
+  assert.equal(
+    roleTestDatabase.users.get(optedInUser.id).newsletter_consent,
+    false,
+  );
   assert.ok(
     roleTestDatabase.emailPreferences.get(optedInUser.id)
       .marketing_unsubscribed_at,
@@ -2573,7 +2772,8 @@ test("admin suspension and restoration update account access and queue notices",
   );
   assert.equal(restoredResponse.status, 200);
   assert.equal(
-    roleTestDatabase.users.get(phase12StandardUser.id).account_status || "active",
+    roleTestDatabase.users.get(phase12StandardUser.id).account_status ||
+      "active",
     "active",
   );
   assert.ok(

@@ -55,6 +55,7 @@ const {
   recordEstimateGeneration,
   saveUserEstimate,
   getUserEstimates,
+  updateUserEstimateFinalPrice,
   deleteUserEstimate,
   deleteAllUserEstimates,
 } = require("./lib/supabase");
@@ -1208,6 +1209,12 @@ app.get("/api/account/estimates", async (req, res) => {
         createdAt: estimate.created_at,
         result: {
           ...estimate.result,
+          estimateId: String(estimate.id),
+          final_price:
+            estimate.final_price !== null &&
+            Number.isFinite(Number(estimate.final_price))
+              ? Number(estimate.final_price)
+              : estimate.result?.pricing?.recommendedQuote,
           sourceDescription: estimate.source_description,
           sourceDeliverables: estimate.source_deliverables,
         },
@@ -1218,6 +1225,39 @@ app.get("/api/account/estimates", async (req, res) => {
     return res
       .status(503)
       .json({ error: "Saved estimates are temporarily unavailable." });
+  }
+});
+
+app.patch("/api/account/estimates/:estimateId/final-price", async (req, res) => {
+  const user = await getAuthenticatedUser(req, res);
+  const estimateId = Number(req.params.estimateId);
+  const finalPrice = req.body?.final_price;
+  if (!user) return;
+  if (!Number.isSafeInteger(estimateId) || estimateId < 1) {
+    return res.status(400).json({ error: "Invalid saved estimate." });
+  }
+  if (
+    typeof finalPrice !== "number" ||
+    !Number.isSafeInteger(finalPrice) ||
+    finalPrice <= 0 ||
+    finalPrice > 100000000
+  ) {
+    return res.status(400).json({ error: "Enter a valid positive price." });
+  }
+  try {
+    const estimate = await updateUserEstimateFinalPrice(
+      user.id,
+      estimateId,
+      finalPrice,
+    );
+    if (!estimate) return res.status(404).json({ error: "Estimate not found." });
+    return res.json({
+      id: String(estimate.id),
+      final_price: Number(estimate.final_price),
+    });
+  } catch (error) {
+    console.error("Final estimate price update failed:", error?.message || error);
+    return res.status(503).json({ error: "The quote could not be saved." });
   }
 });
 
@@ -1281,11 +1321,12 @@ const pricingFeedback = [];
 const MAX_FEEDBACK_ITEMS = 1000;
 
 async function persistEstimateForUser(user, result, description, deliverables) {
-  if (!user || !isSupabaseConfigured()) return;
+  if (!user || !isSupabaseConfigured()) return null;
   try {
     await saveUser(user);
-    await saveUserEstimate(user, {
+    return await saveUserEstimate(user, {
       result,
+      finalPrice: result?.pricing?.recommendedQuote,
       sourceDescription: description,
       sourceDeliverables: deliverables.join(", "),
     });
@@ -1294,6 +1335,7 @@ async function persistEstimateForUser(user, result, description, deliverables) {
       "Account estimate persistence failed:",
       error?.message || error,
     );
+    return null;
   }
 }
 
@@ -1815,15 +1857,18 @@ function validatePdfResult(raw) {
       : null;
   const project = raw?.project;
   const pricing = raw?.pricing;
-  const advice = raw?.advice;
   const recommendedQuote = amount(pricing?.recommendedQuote);
+  const requestedFinalPrice = amount(raw?.final_price);
+  const finalPrice =
+    requestedFinalPrice !== null && requestedFinalPrice > 0
+      ? requestedFinalPrice
+      : recommendedQuote;
   const min = amount(pricing?.fairRange?.min);
   const max = amount(pricing?.fairRange?.max);
 
   if (
     !project ||
     !pricing ||
-    !advice ||
     recommendedQuote === null ||
     min === null ||
     max === null ||
@@ -1837,16 +1882,13 @@ function validatePdfResult(raw) {
     deadline: project.deadline,
   });
   const currency = validateCurrency(pricing.currency?.code);
-  const reasons = Array.isArray(advice.reasons)
-    ? advice.reasons
-        .filter((item) => typeof item === "string" && item.trim())
-        .slice(0, 5)
-        .map((item) => item.trim().slice(0, 280))
-    : [];
-
   return {
     project: {
       projectType: text(project.projectType, "General Project", 120),
+      scopeDescription:
+        typeof raw.sourceDescription === "string"
+          ? raw.sourceDescription.trim().slice(0, 1600)
+          : "",
       experience: selections.experience,
       deadline: selections.deadline,
       complexity: text(project.complexity, "medium", 30),
@@ -1869,22 +1911,8 @@ function validatePdfResult(raw) {
       category: text(pricing.category, "Consulting", 80),
       currency,
       recommendedQuote,
+      finalPrice,
       fairRange: { min, max },
-    },
-    advice: {
-      reasons: reasons.length
-        ? reasons
-        : ["Priced based on the scope you described."],
-      advice: text(
-        advice.advice,
-        "Use this range as a starting point and adjust for your costs and client value.",
-        1000,
-      ),
-      negotiationTip: text(
-        advice.negotiationTip,
-        "Adjust the scope before reducing your price.",
-        500,
-      ),
     },
   };
 }
@@ -2013,7 +2041,7 @@ app.post("/api/pricecheck", async (req, res) => {
   });
   const cachedResult = estimateCache.get(cacheKey);
   if (cachedResult) {
-    await persistEstimateForUser(
+    const savedEstimate = await persistEstimateForUser(
       currentUser,
       cachedResult,
       description,
@@ -2023,14 +2051,18 @@ app.post("/api/pricecheck", async (req, res) => {
     sendProgress(progressId, 100, "Complete");
     closeProgress(progressId);
     logRequestStats(stats, "CACHE_HIT_200");
-    return res.json(cachedResult);
+    return res.json({
+      ...cachedResult,
+      ...(savedEstimate ? { estimateId: String(savedEstimate.id) } : {}),
+      final_price: cachedResult.pricing.recommendedQuote,
+    });
   }
 
   const pendingEstimate = inFlightEstimates.get(cacheKey);
   if (pendingEstimate) {
     try {
       const result = await pendingEstimate;
-      await persistEstimateForUser(
+      const savedEstimate = await persistEstimateForUser(
         currentUser,
         result,
         description,
@@ -2040,7 +2072,11 @@ app.post("/api/pricecheck", async (req, res) => {
       sendProgress(progressId, 100, "Complete");
       closeProgress(progressId);
       logRequestStats(stats, "IN_FLIGHT_HIT_200");
-      return res.json(result);
+      return res.json({
+        ...result,
+        ...(savedEstimate ? { estimateId: String(savedEstimate.id) } : {}),
+        final_price: result.pricing.recommendedQuote,
+      });
     } catch (error) {
       closeProgress(progressId);
       return res.status(500).json({
@@ -2173,12 +2209,21 @@ app.post("/api/pricecheck", async (req, res) => {
   cacheEstimate(cacheKey, result);
   inFlightEstimates.delete(cacheKey);
   resolveEstimate(result);
-  await persistEstimateForUser(currentUser, result, description, deliverables);
+  const savedEstimate = await persistEstimateForUser(
+    currentUser,
+    result,
+    description,
+    deliverables,
+  );
   await recordEstimateGenerationSafely(currentUser);
   sendProgress(progressId, 100, "Complete");
   closeProgress(progressId);
 
-  return res.json(result);
+  return res.json({
+    ...result,
+    ...(savedEstimate ? { estimateId: String(savedEstimate.id) } : {}),
+    final_price: result.pricing.recommendedQuote,
+  });
 });
 
 app.post("/api/pricecheck/feedback", async (req, res) => {
@@ -3113,6 +3158,8 @@ app.post("/api/pricecheck/pdf", (req, res) => {
   }
 
   try {
+    const currentUser = readSession(req.get("cookie"));
+    if (currentUser?.name) result.preparedBy = currentUser.name;
     const doc = createEstimatePdf(result);
     res.status(200);
     res.set({

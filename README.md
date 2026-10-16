@@ -52,7 +52,7 @@ AUTH_SESSION_SECRET=a_random_secret_at_least_32_characters_long
 ### Google sign-in setup
 
 1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), configure the OAuth consent screen, then create an **OAuth client ID** for a **Web application**.
-2. Add your development and production addresses to **Authorized JavaScript origins** (for example, `http://localhost:3000`).
+2. Add your development and production addresses to **Authorized JavaScript origins**. For the local app, include the exact origin you run on, such as `http://localhost:3001` (or whatever `PORT` is set to in `.env`).
 3. Put its client ID in `GOOGLE_CLIENT_ID`. A client ID is safe to send to the browser; do not add a Google client secret.
 4. Generate a unique `AUTH_SESSION_SECRET` with at least 32 characters, add it to `.env`, then restart the server.
 
@@ -72,7 +72,7 @@ To enable traditional email/password accounts, configure Supabase Auth email sig
 
 Supabase Auth remains responsible for verification codes and other Auth emails. Custom notifications use SMTP through the service-authorized `send-email-notifications` Edge Function. Express queues events in the existing Supabase outbox; delivery status, attempts, backoff retries, consent checks, unsubscribe handling, and transactional role/status updates remain unchanged. The SMTP message ID is stable per event, but SMTP does not provide provider-level idempotency, so a rare duplicate is possible if delivery succeeds and the worker fails before recording success. An SMTP outage does not undo a successful role or status change.
 
-For existing Supabase projects, apply any outstanding role migration, then `supabase/migrations/20260930_add_email_events.sql` and `supabase/migrations/20261001_email_notification_outbox.sql`. Fresh projects should run `supabase/schema.sql`, `supabase/migrations/20260930_add_owner_role.sql`, `supabase/migrations/20260930_add_email_events.sql`, and `supabase/migrations/20261001_email_notification_outbox.sql`, in that order. Deploy the Edge Function with the Supabase CLI:
+For existing Supabase projects, apply any outstanding role migration, then `supabase/migrations/20260930_add_email_events.sql`, `supabase/migrations/20261001_email_notification_outbox.sql`, and `supabase/migrations/20261016_add_estimate_final_price.sql`. Fresh projects should run `supabase/schema.sql`, `supabase/migrations/20260930_add_owner_role.sql`, `supabase/migrations/20260930_add_email_events.sql`, `supabase/migrations/20261001_email_notification_outbox.sql`, and `supabase/migrations/20261016_add_estimate_final_price.sql`, in that order. Deploy the Edge Function with the Supabase CLI:
 
 ```sh
 supabase functions deploy send-email-notifications

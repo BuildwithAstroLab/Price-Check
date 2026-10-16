@@ -31,6 +31,12 @@
   const errorReturnBtn = document.getElementById("error-return-btn");
 
   const recommendedQuoteEl = document.getElementById("recommended-quote");
+  const finalQuoteEl = document.getElementById("final-quote");
+  const editPriceBtn = document.getElementById("edit-price-btn");
+  const finalPriceForm = document.getElementById("final-price-form");
+  const finalPriceInput = document.getElementById("final-price-input");
+  const savePriceBtn = document.getElementById("save-price-btn");
+  const cancelPriceBtn = document.getElementById("cancel-price-btn");
   const fairRangeEl = document.getElementById("fair-range");
   const rangeFillEl = document.getElementById("range-fill");
   const rangeMarkerEl = document.getElementById("range-marker");
@@ -165,9 +171,7 @@
   ];
   const loginSubmitButton = document.getElementById("login-submit");
   const loginAccountCopy = document.getElementById("login-account-copy");
-  const loginModePromptText = document.getElementById(
-    "login-mode-prompt-text",
-  );
+  const loginModePromptText = document.getElementById("login-mode-prompt-text");
   const loginDivider = document.getElementById("login-divider");
   const loginBrand = document.getElementById("login-brand");
   const loginKicker = document.getElementById("login-kicker");
@@ -471,10 +475,29 @@
     target.textContent = message;
     target.hidden = !message;
     ["error", "success", "warning", "info"].forEach((state) => {
-      target.classList.toggle(`is-${state}`, Boolean(message) && type === state);
+      target.classList.toggle(
+        `is-${state}`,
+        Boolean(message) && type === state,
+      );
     });
     target.setAttribute("role", type === "error" ? "alert" : "status");
     target.setAttribute("aria-live", type === "error" ? "assertive" : "polite");
+  }
+
+  function getGoogleAuthFailureMessage(error) {
+    const message = String(error?.message || error || "");
+    const origin = window.location?.origin || "this app URL";
+    if (
+      /origin.*not allowed|given origin.*not allowed|given origin.*client id|authorized javascript origins/i.test(
+        message,
+      )
+    ) {
+      return `Google sign-in is not allowed for ${origin}. Add ${origin} to the OAuth client’s Authorized JavaScript origins in Google Cloud Console, then try again.`;
+    }
+    if (/popup.*blocked|popup.*closed|access_denied|cancelled/i.test(message)) {
+      return "Google sign-in was cancelled. Please try again.";
+    }
+    return "Google sign-in failed. Please try again.";
   }
 
   function getAuthFeedbackMessage(context, { status, code, message } = {}) {
@@ -502,11 +525,28 @@
     ) {
       return "Invalid email or password. Please try again.";
     }
-    if (    context === "signup" &&
-    /already exists|email already/.test(safeMessage)) {
+    if (
+      context === "signup" &&
+      /already exists|email already/.test(safeMessage)
+    ) {
       return "An account with this email already exists. Try signing in instead.";
     }
     if (context === "google") {
+      const origin = window.location?.origin || "this app URL";
+      if (
+        /origin.*not allowed|given origin.*not allowed|given origin.*client id|authorized javascript origins/i.test(
+          safeMessage,
+        )
+      ) {
+        return `Google sign-in is not allowed for ${origin}. Add ${origin} to the OAuth client’s Authorized JavaScript origins in Google Cloud Console, then try again.`;
+      }
+      if (
+        /popup.*blocked|popup.*closed|access_denied|cancelled/i.test(
+          safeMessage,
+        )
+      ) {
+        return "Google sign-in was cancelled. Please try again.";
+      }
       return "Google sign-in failed. Please try again.";
     }
     if (context === "signup") {
@@ -546,7 +586,10 @@
     ) {
       return "Verification code has expired. Request a new code.";
     }
-    if (status >= 500 || /temporarily unavailable|couldn't verify/.test(message)) {
+    if (
+      status >= 500 ||
+      /temporarily unavailable|couldn't verify/.test(message)
+    ) {
       return "We couldn't verify your email. Please check your connection and try again.";
     }
     return "Incorrect verification code. Please check the code and try again.";
@@ -963,8 +1006,10 @@
       const authError = hashParams.get("error");
       const authErrorCode = hashParams.get("error_code");
       const loginParams = new URLSearchParams(window.location.search);
-      const restoredStatus = isLoginPath && loginParams.get("status") === "restored";
-      const suspendedStatus = isLoginPath && loginParams.get("status") === "suspended";
+      const restoredStatus =
+        isLoginPath && loginParams.get("status") === "restored";
+      const suspendedStatus =
+        isLoginPath && loginParams.get("status") === "suspended";
       if (restoredStatus || suspendedStatus) {
         loginParams.delete("status");
         window.history.replaceState(
@@ -1003,12 +1048,8 @@
       });
       const session = await sessionResponse.json();
       const suspendedAccount =
-        sessionResponse.status === 403 ||
-        session.code === "ACCOUNT_SUSPENDED";
-      if (
-        suspendedAccount &&
-        (isEstimatePath || isAdminPath)
-      ) {
+        sessionResponse.status === 403 || session.code === "ACCOUNT_SUSPENDED";
+      if (suspendedAccount && (isEstimatePath || isAdminPath)) {
         window.location.assign("/login?status=suspended");
         return;
       }
@@ -1208,10 +1249,7 @@
             return;
           }
           setOtpResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
-          showToast(
-            "New verification code sent to your email.",
-            "success",
-          );
+          showToast("New verification code sent to your email.", "success");
           if (loginOtpInput) {
             loginOtpInput.value = "";
             loginOtpInput.focus();
@@ -1312,9 +1350,10 @@
       }
     } catch (error) {
       renderAuthenticatedUser(null);
+      const authErrorMessage = getGoogleAuthFailureMessage(error);
       showAuthMessage(
         isLoginPath
-          ? "We couldn't sign you in. Please check your connection and try again."
+          ? authErrorMessage
           : "Authentication services are temporarily unavailable. Please try again.",
       );
     }
@@ -2921,7 +2960,10 @@
       adminNotifications = [];
       renderFeedbackDrawer([]);
     } catch (error) {
-      showToast(error.message || "Notifications could not be cleared.", "error");
+      showToast(
+        error.message || "Notifications could not be cleared.",
+        "error",
+      );
     } finally {
       adminDrawerClear.disabled = false;
     }
@@ -2962,7 +3004,10 @@
       }
       await loadAdminDashboard();
     } catch (error) {
-      showToast(error.message || "Pricing metrics could not be reset.", "error");
+      showToast(
+        error.message || "Pricing metrics could not be reset.",
+        "error",
+      );
     } finally {
       adminResetBtn.disabled = false;
     }
@@ -3033,6 +3078,13 @@
       currency: currency.code || "NGN",
       maximumFractionDigits: 0,
     }).format(Math.round(amount));
+  }
+
+  function getFinalPrice(result) {
+    const value = Number(result?.final_price);
+    return Number.isFinite(value) && value > 0
+      ? value
+      : Number(result?.pricing?.recommendedQuote) || 0;
   }
 
   function historyStorageKey() {
@@ -3109,7 +3161,7 @@
       const price = document.createElement("strong");
       price.className = "history-item-price";
       price.textContent = formatCurrency(
-        item.result.pricing.recommendedQuote,
+        getFinalPrice(item.result),
         item.result.pricing.currency,
       );
 
@@ -3178,7 +3230,7 @@
       return;
     }
     dashboardLatestQuote.textContent = formatCurrency(
-      latest.pricing.recommendedQuote,
+      getFinalPrice(latest),
       latest.pricing.currency,
     );
     dashboardLatestCategory.textContent = latest.pricing.category;
@@ -3190,7 +3242,7 @@
       const title = document.createElement("strong");
       title.textContent = getHistoryTitle(item.result);
       const meta = document.createElement("span");
-      meta.textContent = `${item.result.pricing.category} · ${formatCurrency(item.result.pricing.recommendedQuote, item.result.pricing.currency)}`;
+      meta.textContent = `${item.result.pricing.category} · ${formatCurrency(getFinalPrice(item.result), item.result.pricing.currency)}`;
       row.append(title, meta);
       dashboardRecentList.appendChild(row);
     });
@@ -3198,12 +3250,96 @@
 
   function saveToHistory(result) {
     const item = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id:
+        result.estimateId ||
+        `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       createdAt: new Date().toISOString(),
       result,
     };
+    result.historyId = item.id;
     writeHistory([item, ...readHistory()].slice(0, MAX_HISTORY_ITEMS));
     renderHistory();
+  }
+
+  function openFinalPriceEditor() {
+    if (!lastResult) return;
+    finalPriceInput.value = String(getFinalPrice(lastResult));
+    editPriceBtn.hidden = true;
+    finalPriceForm.hidden = false;
+    finalPriceInput.focus();
+    finalPriceInput.select();
+  }
+
+  function cancelFinalPriceEdit() {
+    if (!lastResult) return;
+    finalPriceInput.value = String(getFinalPrice(lastResult));
+    finalPriceForm.hidden = true;
+    editPriceBtn.hidden = false;
+  }
+
+  function updateHistoryFinalPrice(result, finalPrice) {
+    const items = readHistory();
+    const historyId = result.historyId || result.estimateId;
+    const item = items.find(
+      (entry) => String(entry.id) === String(historyId),
+    );
+    if (item) {
+      item.result.final_price = finalPrice;
+      item.result.historyId = item.id;
+      writeHistory(items);
+      renderHistory();
+    }
+  }
+
+  async function saveFinalPrice(event) {
+    event.preventDefault();
+    if (!lastResult || savePriceBtn.disabled) return;
+    const finalPrice = Number(finalPriceInput.value);
+    if (
+      !Number.isSafeInteger(finalPrice) ||
+      finalPrice < 1 ||
+      finalPrice > 100000000
+    ) {
+      finalPriceInput.setCustomValidity(
+        "Enter a whole amount between 1 and 100,000,000.",
+      );
+      finalPriceInput.reportValidity();
+      return;
+    }
+    finalPriceInput.setCustomValidity("");
+    const originalLabel = savePriceBtn.textContent;
+    savePriceBtn.disabled = true;
+    savePriceBtn.textContent = "Saving...";
+    try {
+      if (accountUserId && /^\d+$/.test(String(lastResult.estimateId || ""))) {
+        const response = await fetch(
+          `/api/account/estimates/${lastResult.estimateId}/final-price`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ final_price: finalPrice }),
+          },
+        );
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || "The quote could not be saved.");
+        }
+      }
+      lastResult.final_price = finalPrice;
+      finalQuoteEl.textContent = formatCurrency(
+        finalPrice,
+        lastResult.pricing.currency,
+      );
+      updateHistoryFinalPrice(lastResult, finalPrice);
+      finalPriceForm.hidden = true;
+      editPriceBtn.hidden = false;
+      showToast("Your quote was updated.", "success");
+    } catch (error) {
+      showToast(error.message || "The quote could not be saved.", "error");
+    } finally {
+      savePriceBtn.disabled = false;
+      savePriceBtn.textContent = originalLabel;
+    }
   }
 
   function setFieldError(message) {
@@ -3380,6 +3516,9 @@
   }
 
   function renderResult(data, { saveHistory = true } = {}) {
+    if (!Number.isFinite(Number(data.final_price)) || Number(data.final_price) <= 0) {
+      data.final_price = data.pricing.recommendedQuote;
+    }
     lastResult = data;
 
     if (saveHistory) {
@@ -3390,6 +3529,12 @@
       data.pricing.recommendedQuote,
       data.pricing.currency,
     );
+    finalQuoteEl.textContent = formatCurrency(
+      getFinalPrice(data),
+      data.pricing.currency,
+    );
+    finalPriceForm.hidden = true;
+    editPriceBtn.hidden = false;
     fairRangeEl.textContent =
       formatCurrency(data.pricing.fairRange.min, data.pricing.currency) +
       " – " +
@@ -3424,7 +3569,7 @@
       "",
       `Project: ${project.projectType} ${pricing.category}`,
       "",
-      `Recommended Quote: ${formatCurrency(pricing.recommendedQuote, pricing.currency)}`,
+      `Your Quote: ${formatCurrency(getFinalPrice(data), pricing.currency)}`,
       `Experience: ${LABELS.experience[project.experience] || project.experience}`,
       `Deadline: ${LABELS.deadline[project.deadline] || project.deadline}`,
       `Fair Range: ${formatCurrency(pricing.fairRange.min, pricing.currency)} – ${formatCurrency(pricing.fairRange.max, pricing.currency)}`,
@@ -3527,7 +3672,7 @@
       accountName: invoiceAccountName.value,
       accountNumber: invoiceAccountNumber.value,
       notes: invoiceNotes.value,
-      amount: lastResult.pricing.recommendedQuote,
+      amount: getFinalPrice(lastResult),
       currency: lastResult.pricing.currency,
     };
 
@@ -3640,6 +3785,13 @@
     requestAnimationFrame(() => textarea.focus());
   }
 
+  editPriceBtn?.addEventListener("click", openFinalPriceEditor);
+  cancelPriceBtn?.addEventListener("click", cancelFinalPriceEdit);
+  finalPriceInput?.addEventListener("input", () => {
+    finalPriceInput.setCustomValidity("");
+  });
+  finalPriceForm?.addEventListener("submit", saveFinalPrice);
+
   if (historyListEl) {
     historyListEl.addEventListener("click", async (event) => {
       const actionButton = event.target.closest("button[data-history-action]");
@@ -3666,6 +3818,7 @@
           editHistoryItem(item.result);
           return;
         }
+        item.result.historyId = item.id;
         renderResult(item.result, { saveHistory: false });
         window.scrollTo({ top: 0, behavior: "smooth" });
       }

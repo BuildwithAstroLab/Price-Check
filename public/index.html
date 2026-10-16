@@ -1997,6 +1997,34 @@
             <div class="quote-primary">
               <span class="quote-label">Recommended Quote</span>
               <span class="quote-value" id="recommended-quote">₦0</span>
+              <div class="final-quote-control">
+                <span class="quote-label">Your quote</span>
+                <strong class="final-quote-value" id="final-quote">₦0</strong>
+                <button class="history-action" id="edit-price-btn" type="button">
+                  Edit price
+                </button>
+                <form class="final-price-form" id="final-price-form" hidden>
+                  <label for="final-price-input">Your quote amount</label>
+                  <input
+                    id="final-price-input"
+                    name="final-price"
+                    type="number"
+                    min="1"
+                    max="100000000"
+                    step="1"
+                    inputmode="numeric"
+                    required
+                  />
+                  <div class="final-price-actions">
+                    <button class="btn btn-primary" id="save-price-btn" type="submit">
+                      Save price
+                    </button>
+                    <button class="btn btn-secondary" id="cancel-price-btn" type="button">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
             <div class="quote-range">
               <span class="quote-label">Fair Range</span>
